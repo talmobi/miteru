@@ -83,7 +83,14 @@ function poll (filepath) {
             _touched[filepath] = true
             INFO.FIRST_MODIFICATION && console.log('first modification')
           }
-          _watchers[filepath].trigger() // trigger all callbacks/listeners on this file
+          var info = {
+            filepath: filepath,
+            mtime: stats.mtime,
+            last_mtime: _mtime,
+            delta_mtime: stats.mtime - _mtime,
+            type: 'modification'
+          }
+          _watchers[filepath].trigger(info) // trigger all callbacks/listeners on this file
           _mtimes[filepath] = stats.mtime
         }
       }
@@ -172,18 +179,18 @@ function startPolling (filepath) {
 
 var _recentWarningCount = 0
 var _recentWarningTimeout
-function _watch {
+function watchFile (filepath) {
   // if (typeof callback !== 'funciton') {
   //   throw new Error('Callback function must be provided to _watch(filepath:string, callback:funciton)')
   // }
 
-  filepath = path.resolve(filepath) // resolve path
+  filepath = path.resolve(filepath) // normalize filepath (absolute filepath)
   // remove trailling path separators
   while (filepath[filepath.length - 1] === path.sep) filepath = filepath.slice(0, -1)
 
   // make sure file isn't already being watched
   if (_watchers[filepath] === undefined) {
-    _watchers[filepath] = _createFileWatcher(filepath)
+    _watchers[filepath] = createFileWatcher(filepath)
     // _watchers[filepath].close = function () {
     //   delete _files[filepath]
     //   delete _mtimes[filepath]
@@ -233,30 +240,107 @@ function _watch {
   return _watchers[filepath]
 }
 
-function _createFileWatcher (filepath) {
+function createFileWatcher (filepath) {
   filepath = path.resolve(filepath) // normalize filepath (absolute filepath)
 
   var _listeners = []
 
-  function _trigger () {
-    // trigger callbacks/listeners listening on this filepath
+  function _trigger (info) {
+    // trigger callbacks/listeners listening on this file
+    _listeners.forEach(function (callback) {
+      callback(info)
+    })
   }
 
-  function _add (callback) {
-    _listeners.push(callback)
+  function _addEventListener (callback) {
+    if (_listeners.indexOf(callback) === -1) _listeners.push(callback)
 
     var _off = function () { // return off fn
       var i = _listeners.indexOf(callback)
-      return _listeners.splice(i, 1)
+      if (i !== -1) return _listeners.splice(i, 1)
+      return undefined
     }
+
+    return _off
   }
 
   function _clear () { // clear callbacks/listeners
-    // TODO
+    _listeners = []
   }
 
   return {
     trigger: _trigger,
-    add: _add
+    addEventListener: _addEventListener
   }
+}
+
+function _create () {
+  var _files = {}
+  var _listeners = {}
+
+  function _trigger (info) {
+    var listeners = _listeners[info.type]
+    listeners && listeners.forEach(function (callback) {
+      callback(info)
+    })
+  }
+
+  function _watch (filepath) {
+    filepath = path.resolve(filepath) // normalize filepath (absolute filepath)
+
+    if (!_files[filepath]) {
+      var w = watchFile(filepath)
+      var off = w.addEventListener(_trigger)
+      _files[filepath] = {
+        watcher: w,
+        off: off
+      }
+    }
+  }
+
+  function _unwatch (filepath) {
+    filepath = filepath.resolve()
+
+    if (_files[filepath]) {
+      var file = _files[filepath]
+      var off = file.off
+      off()
+      _files[filepath] = undefined
+      delete _files[filepath]
+    }
+  }
+
+  function _clear () {
+    var files = Object.keys(_files)
+    files.forEach(function (file) {
+      var off = file.off
+      off()
+    })
+    _files = {}
+  }
+
+  function _on (type, callback) {
+    var listeners = _listeners[type] || []
+    if (!_listeners[type]) _listeners[type] = listeners
+
+    listeners.push(callback)
+
+    return function off () {
+      var i = listeners.indexOf(callback)
+      return _listeners.splice(i, 1)
+    }
+  }
+
+  var api = {}
+  api.on = _on
+  api.watch = _watch
+  api.unwatch = _unwatch
+  api.clear = _clear
+  api.close = _clear
+  api.reset = _clear
+  return api
+}
+
+module.exports = {
+  create: _create
 }
