@@ -32,16 +32,30 @@ var _errors = {}
 var _startTime
 
 var _enoents = {}
-var MAX_ENOENTS = 25
+var MAX_ENOENTS = 35
 
 var INFO = {
   STATE_CHANGE: false,
-  INITIAL: true,
+  INITIAL: false,
   FIRST_MODIFICATION: false,
   WARNING: false,
-  WATCHING: true,
-  UNWATCHING: true,
+  WATCHING: false,
+  UNWATCHING: false,
+  TIMEOUTS: false,
   POLLING: false
+}
+
+if (process.env.debug || process.env.DEBUG) {
+  INFO = {
+    STATE_CHANGE: true,
+    INITIAL: true,
+    FIRST_MODIFICATION: true,
+    WARNING: true,
+    WATCHING: true,
+    UNWATCHING: true,
+    TIMEOUTS: true,
+    POLLING: false
+  }
 }
 
 function poll (filepath) {
@@ -51,10 +65,8 @@ function poll (filepath) {
   var _wasInitial = false
 
   fs.stat(filepath, function (err, stats) {
-    stats.mtime = stats.mtime.getTime()
-
     if (!_watchers[filepath]) {
-      return console.log('ignoring fs.stat (stopped watching file: ' + filepath + ')')
+      return INFO.UNWATCHING && console.log('ignoring fs.stat (stopped watching file: ' + filepath + ')')
     }
 
     if (err) {
@@ -255,7 +267,7 @@ function watchFile (filepath) {
 function unwatchFile (filepath) {
   filepath = path.resolve(filepath) // normalize filepath (absolute filepath)
 
-  console.log(Object.keys(_timeouts))
+  INFO.TIMEOUTS && console.log('timeouts: ' + Object.keys(_timeouts))
   INFO.UNWATCHING && console.log('unwatching: ' + filepath)
 
   if (_watchers[filepath]) {
@@ -267,7 +279,7 @@ function unwatchFile (filepath) {
     delete _watchers[filepath]
   }
 
-  console.log(Object.keys(_timeouts))
+  INFO.TIMEOUTS && console.log('timeouts: ' + Object.keys(_timeouts))
 }
 
 function createFileWatcher (filepath) {
