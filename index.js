@@ -36,16 +36,27 @@ var MAX_ENOENTS = 25
 
 var INFO = {
   STATE_CHANGE: false,
-  INITIAL: false,
+  INITIAL: true,
   FIRST_MODIFICATION: false,
   WARNING: false,
-  WATCHING: false
+  WATCHING: true,
+  UNWATCHING: true,
+  POLLING: false
 }
 
 function poll (filepath) {
+  INFO.POLLING && console.log('polling: ' + filepath)
   var _mtime = _mtimes[filepath]
 
+  var _wasInitial = false
+
   fs.stat(filepath, function (err, stats) {
+    stats.mtime = stats.mtime.getTime()
+
+    if (!_watchers[filepath]) {
+      return console.log('ignoring fs.stat (stopped watching file: ' + filepath + ')')
+    }
+
     if (err) {
       // increment error counter
       _errors[filepath] = (_errors[filepath] || 0) + 1
@@ -75,6 +86,7 @@ function poll (filepath) {
 
       if (_mtime === undefined) {
         // initial poll
+        _wasInitial = true
         INFO.INITIAL && console.log('initial poll')
         _mtimes[filepath] = stats.mtime
       } else {
@@ -157,6 +169,7 @@ function poll (filepath) {
 
       // schedule next poll
       clearTimeout(_timeouts[filepath])
+      var _interval = _wasInitial ? 5 : _intervals[filepath]
       _timeouts[filepath] = setTimeout(function () {
         poll(filepath)
       }, _intervals[filepath])
@@ -171,7 +184,6 @@ function startPolling (filepath) {
     throw new Error('Error! File is already being watched/polled.')
   }
   _mtimes[filepath] = undefined
-  _intervals[filepath] = 300
   _timeouts[filepath] = setTimeout(function () {
     poll(filepath)
   }, _intervals[filepath])
@@ -240,6 +252,24 @@ function watchFile (filepath) {
   return _watchers[filepath]
 }
 
+function unwatchFile (filepath) {
+  filepath = path.resolve(filepath) // normalize filepath (absolute filepath)
+
+  console.log(Object.keys(_timeouts))
+  INFO.UNWATCHING && console.log('unwatching: ' + filepath)
+
+  if (_watchers[filepath]) {
+    delete _files[filepath]
+    delete _mtimes[filepath]
+    clearTimeout(_timeouts[filepath])
+    delete _timeouts[filepath]
+    delete _intervals[filepath]
+    delete _watchers[filepath]
+  }
+
+  console.log(Object.keys(_timeouts))
+}
+
 function createFileWatcher (filepath) {
   filepath = path.resolve(filepath) // normalize filepath (absolute filepath)
 
@@ -257,8 +287,13 @@ function createFileWatcher (filepath) {
 
     var _off = function () { // return off fn
       var i = _listeners.indexOf(callback)
-      if (i !== -1) return _listeners.splice(i, 1)
-      return undefined
+      if (i !== -1) {
+        if (_listeners.length === 1) {
+          // removing last watcher for file, stop polling
+          unwatchFile(filepath)
+        }
+        return _listeners.splice(i, 1)
+      }
     }
 
     return _off
@@ -299,7 +334,7 @@ function _create () {
   }
 
   function _unwatch (filepath) {
-    filepath = filepath.resolve()
+    filepath = path.resolve(filepath)
 
     if (_files[filepath]) {
       var file = _files[filepath]

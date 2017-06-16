@@ -21,6 +21,8 @@
   },
   "dependencies": {},
   "devDependencies": {
+    "mkdirp": "^0.5.1",
+    "rimraf": "^2.6.1",
     "tap-spec": "^4.1.1",
     "tape": "^4.6.3"
   }
