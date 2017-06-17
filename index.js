@@ -137,7 +137,6 @@ function poll (filepath) {
         }
       }
 
-
       var delta
 
       // slow down or speed up the polling based on how actively

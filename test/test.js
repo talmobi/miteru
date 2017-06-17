@@ -8,137 +8,174 @@ var miteru = require('../index.js')
 
 var test = require('tape')
 
-test('watch single file once', function (t) {
-  t.plan(4)
-
+function cleanup (done) {
   rimraf('./test/tmp', function () {
     console.log('deleted ./test/tmp')
-
     mkdirp('./test/tmp', function (err) {
       if (err) throw err
       console.log('created empty directory ./test/tmp')
+      done()
+    })
+  })
+}
 
-      var p = path.resolve('./test/tmp/app.js')
-      fs.writeFileSync(p, 'hello giraffe')
+test('watch single file once', function (t) {
+  t.plan(5 + 1)
 
-      // TODO 
-      var expected = {
-        filepath: p,
-        mtime: new Date(Math.floor(Date.now() / 1000 + 1) * 1000),
-        last_mtime: new Date(Math.floor(Date.now() / 1000) * 1000),
-        delta_mtime: 1000,
-        type: 'modification'
-      }
+  cleanup(function () {
+    var filepath = path.resolve('./test/tmp/app.js')
+    fs.writeFileSync(filepath, 'hello world')
+    var now = new Date()
 
-      var w = miteru.create()
-      w.watch('./test/tmp/app.js')
-
-      w.on('modification', function (info) {
-        console.log(info)
+    var events = [
+      function (info) {
         t.equal(
           info.filepath,
-          expected.filepath,
+          filepath,
           'filepath OK'
         )
         t.ok(
-          info.mtime.getTime() >= expected.mtime.getTime()
-          && info.mtime.getTime() < expected.mtime.getTime() + 1000,
+          info.mtime.getTime() >= now.getTime() &&
+          info.mtime.getTime() < (now.getTime() + 1500),
           'mtime OK'
         )
         t.ok(
-          info.last_mtime.getTime() >= expected.last_mtime.getTime()
-          && info.last_mtime.getTime() < expected.last_mtime.getTime() + 1000,
+          info.last_mtime.getTime() >= (now.getTime() - 1500) &&
+          info.last_mtime.getTime() < now.getTime(),
           'last_mtime OK'
         )
         t.ok(
-          info.delta_mtime >= expected.delta_mtime
-          && info.delta_mtime < expected.delta_mtime + 1000,
+          info.delta_mtime >= 900,
+          info.delta_mtime < 1500,
           'delta_mtime OK'
         )
+        t.equal(
+          info.type,
+          'modification',
+          'type OK'
+        )
+      }
+    ]
 
-        // should exit process since nothing else is left to watch
-        w.unwatch('./test/tmp/app.js')
-      })
+    var w = miteru.create()
+    w.watch('./test/tmp/app.js')
 
-      setTimeout(function () {
-        console.log('written file')
-        fs.writeFileSync(p, 'hello giraffe 2')
-      }, 1000)
+    w.on('modification', function (info) {
+      var e = events.shift()
+
+      if (e) {
+        e(info)
+      }
+
+      // should exit process since nothing else is left to watch
+      w.unwatch('./test/tmp/app.js')
     })
+
+    function next () {
+      var a = actions.shift()
+      if (a) {
+        a()
+      } else {
+        console.log('no more actions')
+        t.timeoutAfter(1000, 'failed to stop watching after finishing tests')
+        t.ok(actions.length === 0, 'no more actions')
+      }
+    }
+
+    var actions = [
+      function () {
+        fs.writeFileSync(filepath, 'hello world')
+        console.log('file written: ' + filepath)
+        setTimeout(next, 1000)
+      }
+    ]
+
+    setTimeout(next, 1000)
   })
 })
 
-return undefined
-
 test('watch single file many times', function (t) {
-  t.plan(4 * 3)
+  t.plan(5 * 3 + 1)
 
-  rimraf('./test/tmp', function () {
-    console.log('deleted ./test/tmp')
+  cleanup(function () {
+    var filepath = path.resolve('./test/tmp/app.js')
+    fs.writeFileSync(filepath, 'hello world')
+    var now = new Date()
 
-    mkdirp('./test/tmp', function (err) {
-      if (err) throw err
-      console.log('created empty directory ./test/tmp')
-
-      var p = path.resolve('./test/tmp/app.js')
-      fs.writeFileSync(p, 'hello giraffe')
-
-      // TODO 
-      var expected = {}
-
-      var w = miteru.create()
-      w.watch('./test/tmp/app.js')
-
-      w.on('modification', function (info) {
-        console.log(info)
+    var events = [
+      function (info) {
         t.equal(
           info.filepath,
-          expected.filepath,
+          filepath,
           'filepath OK'
         )
         t.ok(
-          info.mtime.getTime() >= expected.mtime.getTime()
-          && info.mtime.getTime() < expected.mtime.getTime() + 1000,
+          info.mtime.getTime() >= now.getTime() &&
+          info.mtime.getTime() < (now.getTime() + 1500),
           'mtime OK'
         )
         t.ok(
-          info.last_mtime.getTime() >= expected.last_mtime.getTime()
-          && info.last_mtime.getTime() < expected.last_mtime.getTime() + 1000,
+          info.last_mtime.getTime() >= (now.getTime() - 1500) &&
+          info.last_mtime.getTime() < now.getTime(),
           'last_mtime OK'
         )
         t.ok(
-          info.delta_mtime >= expected.delta_mtime
-          && info.delta_mtime < expected.delta_mtime + 1000,
+          info.delta_mtime >= 900,
+          info.delta_mtime < 1500,
           'delta_mtime OK'
         )
+        t.equal(
+          info.type,
+          'modification',
+          'type OK'
+        )
+        now = new Date() // update now for next event
+      }
+    ]
+
+    var w = miteru.create()
+    w.watch('./test/tmp/app.js')
+
+    w.on('modification', function (info) {
+      var e = events[0]
+
+      if (e) {
+        e(info)
+      }
+    })
+
+    function next () {
+      var a = actions.shift()
+      if (a) {
+        a()
+      } else {
+        console.log('no more actions')
+        t.timeoutAfter(1000, 'failed to stop watching after finishing tests')
+        t.ok(actions.length === 0, 'no more actions')
 
         // should exit process since nothing else is left to watch
         w.unwatch('./test/tmp/app.js')
-      })
-
-      var index = 0
-      var limit = 2
-
-      function next () {
-        expected = {
-          filepath: p,
-          mtime: new Date(Math.floor(Date.now() / 1000 + 1) * 1000),
-          last_mtime: new Date(Math.floor(Date.now() / 1000) * 1000),
-          delta_mtime: 1000,
-          type: 'modification'
-        }
-
-        setTimeout(function () {
-          fs.writeFileSync(p, 'hello giraffe 2')
-          console.log('written file')
-
-          if (index++ < limit) {
-            setTimeout(next, 500)
-          }
-        }, 1000)
       }
+    }
 
-      setTimeout(next, 500)
-    })
+    var actions = [
+      function () {
+        fs.writeFileSync(filepath, 'hello world')
+        console.log('file written: ' + filepath)
+        setTimeout(next, 1000)
+      },
+      function () {
+        fs.writeFileSync(filepath, 'hello world')
+        console.log('file written: ' + filepath)
+        setTimeout(next, 1000)
+      },
+      function () {
+        fs.writeFileSync(filepath, 'hello world')
+        console.log('file written: ' + filepath)
+        setTimeout(next, 1000)
+      }
+    ]
+
+    setTimeout(next, 1000)
   })
 })

@@ -6,4 +6,4 @@ node_modules
 # mac files
 *.DS_Store
 
-test/tmp/
+test/tmp
