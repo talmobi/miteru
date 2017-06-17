@@ -4,6 +4,8 @@ var path = require('path')
 // TODO (filters?)
 var _opts = {}
 
+var _watchedFiles = {} // files being watched by miteru
+
 var _mtimes = {} // file mtimes
 var _files = {} // files being watched
 var _intervals = {} // variable polling intervals
@@ -42,7 +44,8 @@ var INFO = {
   WATCHING: false,
   UNWATCHING: false,
   TIMEOUTS: false,
-  POLLING: false
+  POLLING: false,
+  POLLING_FSSTAT_DELTA: false
 }
 
 // turn on a bunch of debugging info in debugging mode
@@ -55,24 +58,30 @@ if (process.env.DEBUG_MITERU) {
     WATCHING: true,
     UNWATCHING: true,
     TIMEOUTS: true,
-    POLLING: false
+    POLLING: true,
+    POLLING_FSSTAT_DELTA: true
   }
 }
 
 function poll (filepath) {
   INFO.POLLING && console.log('polling: ' + filepath)
-  var _mtime = _mtimes[filepath]
-
   var _wasInitial = false
 
+  var pollStartTime = Date.now()
+
   fs.stat(filepath, function (err, stats) {
-    if (!_watchers[filepath]) {
-      return INFO.UNWATCHING && console.log('ignoring fs.stat (stopped watching file: ' + filepath + ')')
+    INFO.POLLING_FSSTAT_DELTA && console.log('polling fs.stat delta: ' + (Date.now() - pollStartTime) + ' ms')
+
+    var wfile = _watchedFiles[filepath]
+    if (!wfile) {
+      INFO.UNWATCHING && console.log('ignoring fs.stat (file removed from watch list: ' + filepath + ')')
+      return undefined
     }
 
     if (err) {
       // increment error counter
-      _errors[filepath] = (_errors[filepath] || 0) + 1
+      // _errors[filepath] = (_errors[filepath] || 0) + 1
+      wfile.errorCounter = (wfile.errorCounter || 0) + 1
 
       switch (err.code) {
         case 'ENOENT':
@@ -80,43 +89,51 @@ function poll (filepath) {
           // so we will try again very soon; therefore this is not a very serious error.
           // However, we will keep track of ENOENT errors and fail when MAX_ENOENTS
           // is reached.
-          _enoents[filepath] = (_enoents[filepath] || 0) + 1 // increment
-          if (_enoents[filepath] < MAX_ENOENTS) { // retry very soon
+          // _enoents[filepath] = (_enoents[filepath] || 0) + 1 // increment
+          wfile.enoents = (wfile.enoents || 0) + 1 // increment
+          if (wfile.enoents < MAX_ENOENTS) { // retry very soon
             // console.log('ENOENT retry: ' + _enoents[filepath])
-            clearTimeout(_timeouts[filepath])
-            _timeouts[filepath] = setTimeout(function () {
+            clearTimeout(wfile.timeout)
+            wfile.timeout = setTimeout(function () {
               poll(filepath)
             }, 5)
           } else {
-            throw new Error('Error! Max ENOENT retries: ' + _enoents[filepath])
+            throw new Error('Error! Max ENOENT retries: ' + wfile.enoents)
           }
           break
         default:
           throw err
       }
     } else { // no errors
-      _enoents[filepath] = 0 // successful read, clear ENOENT counter
+      wfile.enoents = 0 // successful read, clear ENOENT counter
+      // _enoents[filepath] = 0 // successful read, clear ENOENT counter
 
-      if (_mtime === undefined) {
+      // if (_mtime === undefined) {
+      if (wfile.mtime === undefined) {
         // initial poll
         _wasInitial = true
         INFO.INITIAL && console.log('initial poll')
-        _mtimes[filepath] = stats.mtime
+        // _mtimes[filepath] = stats.mtime
+        wfile.mtime = stats.mtime
       } else {
-        if (stats.mtime > _mtime) { // file has been modified
-          if (!_touched[filepath]) {
-            _touched[filepath] = true
+        if (stats.mtime > wfile.mtime) { // file has been modified
+          // if (!_touched[filepath]) {
+          if (!wfile.touched) {
+            // _touched[filepath] = true
+            wfile.touched = true
             INFO.FIRST_MODIFICATION && console.log('first modification')
           }
           var info = {
             filepath: filepath,
             mtime: stats.mtime,
-            last_mtime: _mtime,
-            delta_mtime: stats.mtime - _mtime,
+            last_mtime: wfile.mtime,
+            delta_mtime: stats.mtime - wfile.mtime,
             type: 'modification'
           }
-          _watchers[filepath].trigger(info) // trigger all callbacks/listeners on this file
-          _mtimes[filepath] = stats.mtime
+          // _mtimes[filepath] = stats.mtime
+          wfile.mtime = stats.mtime
+          // _watchers[filepath].trigger(info) // trigger all callbacks/listeners on this file
+          wfile.watcher.trigger(info) // trigger all callbacks/listeners on this file
         }
       }
 
@@ -128,78 +145,90 @@ function poll (filepath) {
       delta = Date.now() - stats.mtime
 
       // special case when file has never been touched since the start
-      if (!_touched[filepath]) {
+      // if (!_touched[filepath]) {
+      if (!wfile.touched) {
         delta = Date.now() - _startTime
         if (delta < INITIAL_FILE) {
-          if (_intervals[filepath] !== SEMI_HOT_POLL_INTERVAL) {
+          if (wfile.interval !== SEMI_HOT_POLL_INTERVAL) {
             INFO.STATE_CHANGE && console.log('(untouched) SEMI HOT FILE $fp'.replace('$fp', filepath))
-            _intervals[filepath] = SEMI_HOT_POLL_INTERVAL
+            wfile.interval = SEMI_HOT_POLL_INTERVAL
           }
         } else if (delta < WARM_FILE) {
-          if (_intervals[filepath] !== WARM_POLL_INTERVAL) {
+          if (wfile.interval !== WARM_POLL_INTERVAL) {
             INFO.STATE_CHANGE && console.log('(untouched) WARM FILE $fp'.replace('$fp', filepath))
-            _intervals[filepath] = WARM_POLL_INTERVAL
+            wfile.interval = WARM_POLL_INTERVAL
           }
         } else if (delta < COLD_FILE) {
-          if (_intervals[filepath] !== COLD_POLL_INTERVAL) {
+          if (wfile.interval !== COLD_POLL_INTERVAL) {
             INFO.STATE_CHANGE && console.log('(untouched) COLD FILE $fp'.replace('$fp', filepath))
-            _intervals[filepath] = COLD_POLL_INTERVAL
+            wfile.interval = COLD_POLL_INTERVAL
           }
         } else {
-          if (_intervals[filepath] !== FREEZING_POLL_INTERVAL) {
+          if (wfile.interval !== FREEZING_POLL_INTERVAL) {
             INFO.STATE_CHANGE && console.log('(untouched) FREEZING FILE $fp'.replace('$fp', filepath))
-            _intervals[filepath] = FREEZING_POLL_INTERVAL
+            wfile.interval = FREEZING_POLL_INTERVAL
           }
         }
       } else {
         if (delta < HOT_FILE) {
-          if (_intervals[filepath] !== HOT_POLL_INTERVAL) {
+          if (wfile.interval !== HOT_POLL_INTERVAL) {
             INFO.STATE_CHANGE && console.log('HOT FILE $fp'.replace('$fp', filepath))
-            _intervals[filepath] = HOT_POLL_INTERVAL
+            wfile.interval = HOT_POLL_INTERVAL
           }
         } else if (delta < SEMI_HOT_FILE) {
-          if (_intervals[filepath] !== SEMI_HOT_POLL_INTERVAL) {
+          if (wfile.interval !== SEMI_HOT_POLL_INTERVAL) {
             INFO.STATE_CHANGE && console.log('SEMI HOT FILE $fp'.replace('$fp', filepath))
-            _intervals[filepath] = SEMI_HOT_POLL_INTERVAL
+            wfile.interval = SEMI_HOT_POLL_INTERVAL
           }
         } else if (delta < WARM_FILE) {
-          if (_intervals[filepath] !== WARM_POLL_INTERVAL) {
+          if (wfile.interval !== WARM_POLL_INTERVAL) {
             INFO.STATE_CHANGE && console.log('WARM FILE $fp'.replace('$fp', filepath))
-            _intervals[filepath] = WARM_POLL_INTERVAL
+            wfile.interval = WARM_POLL_INTERVAL
           }
         } else if (delta < COLD_FILE) {
-          if (_intervals[filepath] !== COLD_POLL_INTERVAL) {
+          if (wfile.interval !== COLD_POLL_INTERVAL) {
             INFO.STATE_CHANGE && console.log('COLD FILE $fp'.replace('$fp', filepath))
-            _intervals[filepath] = COLD_POLL_INTERVAL
+            wfile.interval = COLD_POLL_INTERVAL
           }
         } else {
-          if (_intervals[filepath] !== FREEZING_POLL_INTERVAL) {
+          if (wfile.interval !== FREEZING_POLL_INTERVAL) {
             INFO.STATE_CHANGE && console.log('FREEZING FILE $fp'.replace('$fp', filepath))
-            _intervals[filepath] = FREEZING_POLL_INTERVAL
+            wfile.interval = FREEZING_POLL_INTERVAL
           }
         }
       }
 
       // schedule next poll
-      clearTimeout(_timeouts[filepath])
-      var _interval = _wasInitial ? 5 : _intervals[filepath]
-      _timeouts[filepath] = setTimeout(function () {
+      // clearTimeout(_timeouts[filepath])
+      clearTimeout(wfile.timeout)
+      // var _interval = _wasInitial ? 5 : _watchedFiles[filepath].interval
+      var _interval = _wasInitial ? 5 : wfile.interval
+      // _timeouts[filepath] = setTimeout(function () {
+      //   poll(filepath)
+      // }, _watchedFiles[filepath].interval)
+      wfile.timeout = setTimeout(function () {
         poll(filepath)
-      }, _intervals[filepath])
+      }, wfile.interval)
     } // else
   }) // fs.stat
 }
 
 function startPolling (filepath) {
   if (!_startTime) _startTime = Date.now()
+  INFO.POLLING && console.log('starting to poll: ' + filepath)
 
-  if (_timeouts[filepath] !== undefined) {
+  var wfile = _watchedFiles[filepath]
+  if (wfile.timeout !== undefined) {
     throw new Error('Error! File is already being watched/polled.')
   }
-  _mtimes[filepath] = undefined
-  _timeouts[filepath] = setTimeout(function () {
+  // wfile.interval = 100
+  // _mtimes[filepath] = undefined
+  wfile.timeout = setTimeout(function () {
     poll(filepath)
-  }, _intervals[filepath])
+  }, wfile.interval)
+  // _timeouts[filepath] = setTimeout(function () {
+  //   poll(filepath)
+  // }, _watchedFiles[filepath].interval)
 }
 
 var _recentWarningCount = 0
@@ -214,17 +243,20 @@ function watchFile (filepath) {
   while (filepath[filepath.length - 1] === path.sep) filepath = filepath.slice(0, -1)
 
   // make sure file isn't already being watched
-  if (_watchers[filepath] === undefined) {
-    _watchers[filepath] = createFileWatcher(filepath)
+  if (_watchedFiles[filepath] === undefined) {
+    var wfile = {}
+    _watchedFiles[filepath] = wfile
+    wfile.watcher = createFileWatcher(filepath)
     // _watchers[filepath].close = function () {
     //   delete _files[filepath]
     //   delete _mtimes[filepath]
     //   clearTimeout(_timeouts[filepath])
     //   delete _timeouts[filepath]
-    //   delete _intervals[filepath]
+    //   delete _watchedFiles[filepath].interval
     // }
 
-    _files[filepath] = Date.now()
+    wfile.start_time = Date.now()
+    // _files[filepath] = Date.now()
 
     if (/node_modules|^\.|[\/\\]\./i.test(filepath)) {
       // console.log('warning: skipping node_modules or dotfile')
@@ -262,7 +294,7 @@ function watchFile (filepath) {
   //   // add callback function to list?
   // }
 
-  return _watchers[filepath]
+  return wfile.watcher
 }
 
 function unwatchFile (filepath) {
@@ -271,13 +303,18 @@ function unwatchFile (filepath) {
   INFO.TIMEOUTS && console.log('timeouts: ' + Object.keys(_timeouts))
   INFO.UNWATCHING && console.log('unwatching: ' + filepath)
 
-  if (_watchers[filepath]) {
-    delete _files[filepath]
-    delete _mtimes[filepath]
-    clearTimeout(_timeouts[filepath])
-    delete _timeouts[filepath]
-    delete _intervals[filepath]
-    delete _watchers[filepath]
+  // if (_watchers[filepath]) {
+  if (_watchedFiles[filepath]) {
+    clearTimeout(_watchedFiles[filepath].timeout)
+    delete _watchedFiles[filepath]
+    // delete _files[filepath]
+    // delete _mtimes[filepath]
+    // clearTimeout(_timeouts[filepath])
+    // delete _timeouts[filepath]
+    // delete _watchedFiles[filepath].interval
+    // delete _watchers[filepath]
+  } else {
+    INFO.WARNING && console.log('unwatching an unwatched file: ' + filepath)
   }
 
   INFO.TIMEOUTS && console.log('timeouts: ' + Object.keys(_timeouts))
