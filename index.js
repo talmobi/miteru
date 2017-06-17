@@ -45,7 +45,8 @@ var INFO = {
   POLLING: false
 }
 
-if (process.env.debug || process.env.DEBUG) {
+// turn on a bunch of debugging info in debugging mode
+if (process.env.DEBUG_MITERU) {
   INFO = {
     STATE_CHANGE: true,
     INITIAL: true,

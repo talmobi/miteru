@@ -4,7 +4,7 @@
   "description": "simple file watcher",
   "main": "miteru.js",
   "scripts": {
-    "debug": "debug=true node test/test.js | tap-spec",
+    "debug": "DEBUG_MITERU=true node test/test.js | tap-spec",
     "test": "node test/test.js | tap-spec"
   },
   "keywords": [
