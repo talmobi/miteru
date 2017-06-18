@@ -402,7 +402,8 @@ function _create () {
 
   function _clear () {
     var files = Object.keys(_files)
-    files.forEach(function (file) {
+    files.forEach(function (filepath) {
+      var file = _files[filepath]
       var off = file.off
       off()
     })
