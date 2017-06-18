@@ -241,7 +241,7 @@ test('watch single file many times', function (t) {
 })
 
 test('watch a bunch of files many times', function (t) {
-  t.plan(12)
+  t.plan(13)
 
   cleanup(function () {
     var filepath1 = path.resolve('./test/tmp/giraffe.js')
@@ -324,7 +324,7 @@ test('watch a bunch of files many times', function (t) {
         t.equal(
           miteru.getStatus().files_length,
           3,
-          'three unique files still being watched'
+          '3 unique files still being watched'
         )
 
         t.equal(
@@ -370,16 +370,23 @@ test('watch a bunch of files many times', function (t) {
         )
 
         w2.clear()
+        console.log('w2 cleared')
 
         t.equal(
           miteru.getStatus().files_length,
           0,
-          'no more files being watched'
+          '0 files being watched'
+        )
+
+        t.deepEqual(
+          miteru.getStatus().files,
+          [],
+          'no files being watched'
         )
 
         t.equal(miteru.getStatus().listeners_length,
           0,
-          'no more file event listeners'
+          '0 file event listeners'
         )
       }
     }
