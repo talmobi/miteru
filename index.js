@@ -6,14 +6,14 @@ var _opts = {}
 
 var _watchedFiles = {} // files being watched by miteru
 
-var _mtimes = {} // file mtimes
-var _files = {} // files being watched
-var _intervals = {} // variable polling intervals
-var _timeouts = {} // polling setTimeouts
+// var _mtimes = {} // file mtimes
+// var _files = {} // files being watched
+// var _intervals = {} // variable polling intervals
+// var _timeouts = {} // polling setTimeouts
 
-var _touched = {} // touched files (from start of process)
+// var _touched = {} // touched files (from start of process)
 
-var _watchers = {}
+// var _watchers = {}
 // var _textContents = {} // TODO
 
 var HOT_FILE = (1000 * 60 * 5) // 5 minutes in ms
@@ -241,9 +241,10 @@ function watchFile (filepath) {
   // remove trailling path separators
   while (filepath[filepath.length - 1] === path.sep) filepath = filepath.slice(0, -1)
 
+  var wfile = _watchedFiles[filepath] || {}
+
   // make sure file isn't already being watched
   if (_watchedFiles[filepath] === undefined) {
-    var wfile = {}
     _watchedFiles[filepath] = wfile
     wfile.watcher = createFileWatcher(filepath)
     // _watchers[filepath].close = function () {
@@ -352,9 +353,14 @@ function createFileWatcher (filepath) {
     _listeners = []
   }
 
+  function _getListenersLength () {
+    return _listeners.length
+  }
+
   return {
     trigger: _trigger,
-    addEventListener: _addEventListener
+    addEventListener: _addEventListener,
+    getListenersLength: _getListenersLength
   }
 }
 
@@ -415,6 +421,12 @@ function _create () {
     }
   }
 
+  // TODO
+  function _getFiles () {
+    var files = Object.keys(_files)
+    return files
+  }
+
   var api = {}
   api.on = _on
   api.watch = _watch
@@ -422,9 +434,26 @@ function _create () {
   api.clear = _clear
   api.close = _clear
   api.reset = _clear
+  api.getFiles = _getFiles // TODO
   return api
 }
 
+function _getStatus () {
+  var counter = 0
+  var files = Object.keys(_watchedFiles)
+  files.forEach(function (filepath) {
+    var wfile = _watchedFiles[filepath]
+    counter += wfile.watcher.getListenersLength()
+  })
+
+  return {
+    files: files,
+    files_length: files.length,
+    listeners_length: counter
+  }
+}
+
 module.exports = {
-  create: _create
+  create: _create,
+  getStatus: _getStatus
 }

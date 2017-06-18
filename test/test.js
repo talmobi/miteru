@@ -20,7 +20,7 @@ function cleanup (done) {
 }
 
 test('watch single file once', function (t) {
-  t.plan(5 + 1)
+  t.plan(5 + 3)
 
   cleanup(function () {
     var filepath = path.resolve('./test/tmp/app.js')
@@ -78,7 +78,21 @@ test('watch single file once', function (t) {
       } else {
         console.log('no more actions')
         t.timeoutAfter(1000, 'failed to stop watching after finishing tests')
-        t.ok(actions.length === 0, 'no more actions')
+        t.equal(
+          actions.length,
+          0,
+          'no more actions'
+        )
+        t.equal(
+          miteru.getStatus().files_length,
+          0,
+          'no more files being watched'
+        )
+        t.equal(
+          miteru.getStatus().listeners_length,
+          0,
+          'no more file event listeners'
+        )
       }
     }
 
@@ -95,7 +109,7 @@ test('watch single file once', function (t) {
 })
 
 test('watch single file many times', function (t) {
-  t.plan(5 * 3 + 1)
+  t.plan(5 * 3 + 3 + 4)
 
   cleanup(function () {
     var filepath = path.resolve('./test/tmp/app.js')
@@ -151,10 +165,56 @@ test('watch single file many times', function (t) {
       } else {
         console.log('no more actions')
         t.timeoutAfter(1000, 'failed to stop watching after finishing tests')
-        t.ok(actions.length === 0, 'no more actions')
+
+        t.equal(
+          actions.length,
+          0,
+          'no more actions'
+        )
+        t.equal(
+          miteru.getStatus().files_length,
+          1,
+          'file still being watched'
+        )
+        t.equal(
+          miteru.getStatus().listeners_length,
+          1,
+          '1 event listener active'
+        )
+
+        var w2 = miteru.create()
+        w2.watch('./test/tmp/app.js')
+        // w.on('modification', function () {
+        //   // do nothing
+        // })
+
+        t.equal(
+          miteru.getStatus().listeners_length,
+          2,
+          '2 event listeners active'
+        )
 
         // should exit process since nothing else is left to watch
         w.unwatch('./test/tmp/app.js')
+
+
+        t.equal(
+          miteru.getStatus().listeners_length,
+          1,
+          '1 event listener active'
+        )
+
+        w2.unwatch('./test/tmp/app.js')
+
+        t.equal(
+          miteru.getStatus().files_length,
+          0,
+          'no more files being watched'
+        )
+        t.equal(miteru.getStatus().listeners_length,
+          0,
+          'no more file event listeners'
+        )
       }
     }
 
