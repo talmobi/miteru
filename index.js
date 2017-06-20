@@ -386,6 +386,15 @@ function _create () {
         off: off
       }
     }
+
+    function unwatch () {
+      _unwatch(filepath)
+    }
+
+    return {
+      close: unwatch,
+      unwatch: unwatch
+    }
   }
 
   function _unwatch (filepath) {
