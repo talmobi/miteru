@@ -16,6 +16,11 @@ var _watchedFiles = {} // files being watched by miteru
 // var _watchers = {}
 // var _textContents = {} // TODO
 
+var _running = true
+process.on('exit', function () {
+  _running = false
+})
+
 var HOT_FILE = (1000 * 60 * 5) // 5 minutes in ms
 var SEMI_HOT_FILE = (1000 * 60 * 15) // 15 minutes in ms
 var WARM_FILE = (1000 * 60 * 60) // 60 minutes in ms
@@ -58,12 +63,14 @@ if (process.env.DEBUG_MITERU) {
     WATCHING: true,
     UNWATCHING: true,
     TIMEOUTS: true,
-    POLLING: true,
-    POLLING_FSSTAT_DELTA: true
+    POLLING: false,
+    POLLING_FSSTAT_DELTA: false
   }
 }
 
 function poll (filepath) {
+  if (!_running) return undefined // exit
+
   INFO.POLLING && console.log('polling: ' + filepath)
   var _wasInitial = false
 
@@ -116,7 +123,23 @@ function poll (filepath) {
         // _mtimes[filepath] = stats.mtime
         wfile.mtime = stats.mtime
       } else {
-        if (stats.mtime > wfile.mtime) { // file has been modified
+        var changed = (stats.mtime > wfile.mtime)
+
+        // edge case where mtime is within 1000 milliseconds
+        // of current time for file systems where file timestamps
+        // are stored with 1 second precision (Mac OS comes to mind).
+        // In this case, we compare the file contents to determine changes.
+        if (!changed && (
+          (Date.now() - 1000) <= stats.mtime.getTime()
+        )) {
+          var content = fs.readFileSync( filepath )
+          if (content !== wfile.content) {
+            changed = true
+            wfile.content = content
+          }
+        }
+
+        if ( changed ) { // file has been modified
           // if (!_touched[filepath]) {
           if (!wfile.touched) {
             // _touched[filepath] = true
@@ -132,6 +155,9 @@ function poll (filepath) {
           }
           // _mtimes[filepath] = stats.mtime
           wfile.mtime = stats.mtime
+          wfile.atime = stats.atime
+          wfile.ctime = stats.ctime
+          wfile.content = fs.readFileSync( filepath )
           // _watchers[filepath].trigger(info) // trigger all callbacks/listeners on this file
           wfile.watcher.trigger(info) // trigger all callbacks/listeners on this file
         }
@@ -217,14 +243,21 @@ function startPolling (filepath) {
   INFO.POLLING && console.log('starting to poll: ' + filepath)
 
   var wfile = _watchedFiles[filepath]
+
   if (wfile.timeout !== undefined) {
     throw new Error('Error! File is already being watched/polled.')
   }
+
+  var stats = fs.statSync(filepath)
+  wfile.mtime = stats.mtime
+  wfile.atime = stats.atime
+  wfile.ctime = stats.ctime
+  wfile.content = fs.readFileSync(filepath)
   // wfile.interval = 100
   // _mtimes[filepath] = undefined
   wfile.timeout = setTimeout(function () {
     poll(filepath)
-  }, wfile.interval)
+  }, 0)
   // _timeouts[filepath] = setTimeout(function () {
   //   poll(filepath)
   // }, _watchedFiles[filepath].interval)
@@ -300,7 +333,7 @@ function watchFile (filepath) {
 function unwatchFile (filepath) {
   filepath = path.resolve(filepath) // normalize filepath (absolute filepath)
 
-  INFO.TIMEOUTS && console.log('timeouts: ' + Object.keys(_timeouts))
+  // INFO.TIMEOUTS && console.log('timeouts: ' + Object.keys(_timeouts))
   INFO.UNWATCHING && console.log('unwatching: ' + filepath)
 
   // if (_watchers[filepath]) {
@@ -317,7 +350,7 @@ function unwatchFile (filepath) {
     INFO.WARNING && console.log('unwatching an unwatched file: ' + filepath)
   }
 
-  INFO.TIMEOUTS && console.log('timeouts: ' + Object.keys(_timeouts))
+  // INFO.TIMEOUTS && console.log('timeouts: ' + Object.keys(_timeouts))
 }
 
 function createFileWatcher (filepath) {
@@ -463,7 +496,15 @@ function _getStatus () {
   }
 }
 
+function _watch (file, callback) {
+  var w = _create()
+  w.watch( file )
+  w.on('modification', callback)
+  return w
+}
+
 module.exports = {
   create: _create,
+  // watch: _watch,
   getStatus: _getStatus
 }
