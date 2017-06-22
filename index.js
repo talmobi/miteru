@@ -185,6 +185,8 @@ function poll (filepath) {
         // In this case, we compare the file contents to determine changes.
         if (!changed) {
           if ( (Date.now() - stats.mtime.getTime()) < 1000 ) {
+            clearTimeout(wfile._contentDeleteTimeout)
+
             var _s = Date.now()
             var content = fs.readFileSync( filepath ).toString('utf8')
             var _t = Date.now() - _s
@@ -196,6 +198,14 @@ function poll (filepath) {
               changed = true
               wfile._content = content
             }
+
+            clearTimeout(wfile._contentDeleteTimeout)
+            wfile._contentDeleteTimeout = setTimeout(function () {
+              if (wfile._content) {
+                delete wfile._content
+                INFO.EDGE_FREE && console.log('freeing up edge case memory (timeout)')
+              }
+            }, 1000)
           } else {
             // edge case no longer relevant, free up memory
             if (wfile._content) {
@@ -206,6 +216,8 @@ function poll (filepath) {
         }
 
         if ( changed ) { // file has been modified
+          clearTimeout(wfile._contentDeleteTimeout)
+
           if (!wfile.touched) {
             wfile.touched = true
             INFO.FIRST_MODIFICATION && console.log('first modification')
