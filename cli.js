@@ -27,10 +27,16 @@ var watcher = miteru.create()
 
 argv._.forEach(function ( pattern ) {
   var files = glob.sync( pattern )
-  files.forEach(function ( file ) {
-    console.log('watching file: ' + file)
-    watcher.watch( file )
-  })
+
+  if (files.length) {
+    files.forEach(function ( file ) {
+      console.log('watching file: ' + file)
+      watcher.watch( file )
+    })
+  } else {
+    console.log('watching file: ' + pattern)
+    watcher.watch( pattern )
+  }
 })
 
 var _spawns = []
@@ -76,6 +82,14 @@ function exec (cmd) {
     })
   }, 100)
 }
+
+watcher.on('unlink', function (info) {
+  console.log('unlink at: ' + info.filepath)
+})
+
+watcher.on('add', function (info) {
+  console.log('add at: ' + info.filepath)
+})
 
 watcher.on('modification', function (info) {
   var cmd = argv.e
