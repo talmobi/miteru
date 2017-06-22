@@ -100,9 +100,9 @@ if (process.env.DEBUG_MITERU) {
 }
 
 // TODO
-INFO.TRIGGER = true
-INFO.POLLING = true
-INFO.EDGE_FREE = true
+// INFO.TRIGGER = true
+// INFO.POLLING = true
+// INFO.EDGE_FREE = true
 
 // temporarily set wfile._content to work around edge case scenario
 // where file system mtime precision is up to 1000ms (1 second)
