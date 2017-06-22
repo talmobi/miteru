@@ -3,6 +3,9 @@
   "version": "0.0.2",
   "description": "simple file watcher",
   "main": "miteru.js",
+  "bin": {
+    "miteru": "./cli.js"
+  },
   "scripts": {
     "debug": "DEBUG_MITERU=true node test/test.js | tap-spec",
     "test": "node test/test.js | tap-spec"
@@ -20,7 +23,10 @@
     "url": "https://github.com/talmobi/miteru/issues",
     "email": "talmo.christian@gmail.com"
   },
-  "dependencies": {},
+  "dependencies": {
+    "glob": "^7.1.2",
+    "minimist": "^1.2.0"
+  },
   "devDependencies": {
     "mkdirp": "^0.5.1",
     "rimraf": "^2.6.1",
