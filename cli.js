@@ -83,6 +83,7 @@ watcher.on('modification', function (info) {
   if ( cmd ) {
     exec( cmd )
   } else {
-    console.log('(no command argument ([-e, --execute] <command string>) supplied -- doing nothing')
+    console.log()
+    // console.log('(no command argument ([-e, --execute] <command string>) supplied -- doing nothing')
   }
 })
