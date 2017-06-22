@@ -99,6 +99,10 @@ if (process.env.DEBUG_MITERU) {
   if (!_usePolling) INFO.POLLING = true
 }
 
+// TODO
+// INFO.POLLING = true
+// INFO.TRIGGER = true
+
 function poll (filepath) {
   if (!_running) return undefined // exit
 
@@ -139,6 +143,7 @@ function poll (filepath) {
             } else {
               // doubel checks still failling, assume file was removed
               wfile.exists = false
+              INFO.STATE_CHANGE && console.log('file removed: ' + filepath)
 
               // trigger listeners
               wfile.watcher.trigger({
@@ -158,6 +163,7 @@ function poll (filepath) {
         wfile.exists = true
 
         // trigger listeners
+        INFO.STATE_CHANGE && console.log('file added: ' + filepath)
         wfile.watcher.trigger({
           type: 'add',
           filepath: filepath
@@ -352,7 +358,7 @@ function startPolling (filepath) {
       wfile._content = fs.readFileSync(filepath).toString('utf8')
     }
 
-    if (_usePolling) {
+    if (_usePolling || !wfile.exists) {
       clearTimeout(wfile.timeout)
       wfile.timeout = setTimeout(function () {
         poll(filepath)
