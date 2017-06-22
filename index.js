@@ -100,8 +100,23 @@ if (process.env.DEBUG_MITERU) {
 }
 
 // TODO
-// INFO.POLLING = true
-// INFO.TRIGGER = true
+INFO.TRIGGER = true
+INFO.POLLING = true
+INFO.EDGE_FREE = true
+
+// temporarily set wfile._content to work around edge case scenario
+// where file system mtime precision is up to 1000ms (1 second)
+function _setContent (wfile, content) {
+  // INFO.EDGE_FREE && console.log('set wfile._content')
+  wfile._content = content
+  clearTimeout(wfile._contentDeleteTimeout)
+  wfile._contentDeleteTimeout = setTimeout(function () {
+    if (wfile._content) {
+      delete wfile._content
+      INFO.EDGE_FREE && console.log('freeing up edge case memory (timeout)')
+    }
+  }, 1000)
+}
 
 function poll (filepath) {
   if (!_running) return undefined // exit
@@ -174,7 +189,10 @@ function poll (filepath) {
         wfile.ctime = stats.ctime
         wfile.size = stats.size
         wfile.interval = 100
-        wfile._content = fs.readFileSync(filepath).toString('utf8')
+
+        // wfile._content = fs.readFileSync(filepath).toString('utf8')
+        _setContent( wfile, fs.readFileSync( filepath ).toString('utf8') )
+        // TODO add timeout to free up memory on all wfile._content?
       } else {
         var _interval_override
         var changed = (stats.mtime > wfile.mtime) || (stats.size !== wfile.size)
@@ -185,7 +203,7 @@ function poll (filepath) {
         // In this case, we compare the file contents to determine changes.
         if (!changed) {
           if ( (Date.now() - stats.mtime.getTime()) < 1000 ) {
-            clearTimeout(wfile._contentDeleteTimeout)
+            // clearTimeout(wfile._contentDeleteTimeout)
 
             var _s = Date.now()
             var content = fs.readFileSync( filepath ).toString('utf8')
@@ -196,27 +214,28 @@ function poll (filepath) {
               // console.log(content.slice(10))
               // console.log(wfile && wfile._content && wfile._content.slice(10))
               changed = true
-              wfile._content = content
+              // wfile._content = content
+              _setContent(wfile, content)
             }
 
-            clearTimeout(wfile._contentDeleteTimeout)
-            wfile._contentDeleteTimeout = setTimeout(function () {
-              if (wfile._content) {
-                delete wfile._content
-                INFO.EDGE_FREE && console.log('freeing up edge case memory (timeout)')
-              }
-            }, 1000)
+            // clearTimeout(wfile._contentDeleteTimeout)
+            // wfile._contentDeleteTimeout = setTimeout(function () {
+            //   if (wfile._content) {
+            //     delete wfile._content
+            //     INFO.EDGE_FREE && console.log('freeing up edge case memory (timeout)')
+            //   }
+            // }, 1000)
           } else {
             // edge case no longer relevant, free up memory
-            if (wfile._content) {
-              delete wfile._content
-              INFO.EDGE_FREE && console.log('freeing up edge case memory')
-            }
+            // if (wfile._content) {
+            //   delete wfile._content
+            //   INFO.EDGE_FREE && console.log('freeing up edge case memory')
+            // }
           }
         }
 
         if ( changed ) { // file has been modified
-          clearTimeout(wfile._contentDeleteTimeout)
+          // clearTimeout(wfile._contentDeleteTimeout)
 
           if (!wfile.touched) {
             wfile.touched = true
@@ -233,7 +252,10 @@ function poll (filepath) {
           wfile.atime = stats.atime
           wfile.ctime = stats.ctime
           wfile.size = stats.size
-          wfile._content = fs.readFileSync( filepath ).toString('utf8')
+
+          // wfile._content = fs.readFileSync( filepath ).toString('utf8')
+          _setContent( wfile, fs.readFileSync( filepath ).toString('utf8') )
+
           wfile.watcher.trigger(info) // trigger all callbacks/listeners on this file
         }
 
@@ -367,7 +389,9 @@ function startPolling (filepath) {
       wfile.atime = stats.atime
       wfile.ctime = stats.ctime
       wfile.size = stats.size
-      wfile._content = fs.readFileSync(filepath).toString('utf8')
+
+      // wfile._content = fs.readFileSync(filepath).toString('utf8')
+      _setContent( wfile, fs.readFileSync( filepath ).toString('utf8') )
     }
 
     if (_usePolling || !wfile.exists) {

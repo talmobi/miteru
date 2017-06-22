@@ -84,16 +84,16 @@ function exec (cmd) {
 }
 
 watcher.on('unlink', function (info) {
-  console.log('unlink at: ' + info.filepath)
+  console.log('CLI: unlink at: ' + info.filepath)
 })
 
 watcher.on('add', function (info) {
-  console.log('add at: ' + info.filepath)
+  console.log('CLI: add at: ' + info.filepath)
 })
 
 watcher.on('modification', function (info) {
   var cmd = argv.e
-  console.log('modification at: ' + info.filepath)
+  console.log('CLI: modification at: ' + info.filepath)
   if ( cmd ) {
     exec( cmd )
   } else {
