@@ -62,6 +62,15 @@ var _startTime
 var _enoents = {}
 var MAX_ENOENTS = 10
 
+// edge case workaround requires to read in, compare and temporarily
+// store the file contents -- only do this for reasonably sized files.
+// The edge case applies only if a file has been modified more than once
+// within one second (file system file timestamp (mtime) precision/resolution)
+// aka mtime and size is the same -- this doesn't mean that the content is necessarily
+// the same so we have to compare the file contents
+var MAX_EDGE_CASE_FILESIZE = (1024 * 1024 * 10)
+var EDGE_CASE_RESOLUTION = 1000 // file timestamp precision
+
 var INFO = {
   STATE_CHANGE: false,
   TRIGGER: false,
@@ -191,7 +200,7 @@ function poll (filepath) {
         wfile.interval = 100
 
         // wfile._content = fs.readFileSync(filepath).toString('utf8')
-        _setContent( wfile, fs.readFileSync( filepath ).toString('utf8') )
+        _setContent( wfile, fs.readFileSync( filepath ) )
         // TODO add timeout to free up memory on all wfile._content?
       } else {
         var _interval_override
@@ -201,14 +210,14 @@ function poll (filepath) {
         // of current time for file systems where file timestamps
         // are stored with 1 second precision (Mac OS comes to mind).
         // In this case, we compare the file contents to determine changes.
-        if (!changed) {
-          if ( (Date.now() - stats.mtime.getTime()) < 1000 ) {
+        if (!changed && (stats.size < (MAX_EDGE_CASE_FILESIZE))) {
+          if ( (Date.now() - stats.mtime.getTime()) < EDGE_CASE_RESOLUTION ) {
             // clearTimeout(wfile._contentDeleteTimeout)
 
             var _s = Date.now()
-            var content = fs.readFileSync( filepath ).toString('utf8')
+            var content = fs.readFileSync( filepath )
             var _t = Date.now() - _s
-            if (content !== wfile._content) {
+            if (!wfile._content || !content.equals( wfile._content )) {
               // console.log(' === fallback modification: ' + _t + ', wfile.interval: ' + wfile.interval)
               _interval_override = 200
               // console.log(content.slice(10))
@@ -254,7 +263,7 @@ function poll (filepath) {
           wfile.size = stats.size
 
           // wfile._content = fs.readFileSync( filepath ).toString('utf8')
-          _setContent( wfile, fs.readFileSync( filepath ).toString('utf8') )
+          _setContent( wfile, fs.readFileSync( filepath ) )
 
           wfile.watcher.trigger(info) // trigger all callbacks/listeners on this file
         }
@@ -391,7 +400,7 @@ function startPolling (filepath) {
       wfile.size = stats.size
 
       // wfile._content = fs.readFileSync(filepath).toString('utf8')
-      _setContent( wfile, fs.readFileSync( filepath ).toString('utf8') )
+      _setContent( wfile, fs.readFileSync( filepath ) )
     }
 
     if (_usePolling || !wfile.exists) {
