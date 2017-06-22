@@ -16,9 +16,30 @@ var _watchedFiles = {} // files being watched by miteru
 // var _watchers = {}
 // var _textContents = {} // TODO
 
+var _usePolling = true
+
+// make sue of fs.watch for improved low cpu polling on OS X by default
+var platform = require('os').platform()
+if (platform === 'darwin') {
+  _usePolling = false
+}
+
+// force polling from env variable
+if (process.env.MITERU_USE_POLLING) {
+  _usePolling = true
+}
+
 var _running = true
 process.on('exit', function () {
   _running = false
+  Object.keys( _watchedFiles ).forEach(function ( filepath ) {
+    var wfile = _watchedFiles[filepath]
+    if (wfile._fsWatch) {
+      try {
+        wfile._fsWatch.close()
+      } catch (err) { /* ignored */ }
+    }
+  })
 })
 
 var HOT_FILE = (1000 * 60 * 5) // 5 minutes in ms
@@ -43,11 +64,15 @@ var MAX_ENOENTS = 10
 
 var INFO = {
   STATE_CHANGE: false,
+  TRIGGER: false,
   INITIAL: false,
+  ENOENT: false,
+  FSWATCH: false,
   FIRST_MODIFICATION: false,
   WARNING: false,
   WATCHING: false,
   UNWATCHING: false,
+  EDGE_FREE: false,
   TIMEOUTS: false,
   POLLING: false,
   POLLING_FSSTAT_DELTA: false
@@ -57,15 +82,21 @@ var INFO = {
 if (process.env.DEBUG_MITERU) {
   INFO = {
     STATE_CHANGE: true,
+    TRIGGER: true,
     INITIAL: true,
+    ENOENT: true,
+    FSWATCH: true,
     FIRST_MODIFICATION: true,
     WARNING: true,
     WATCHING: true,
     UNWATCHING: true,
+    EDGE_FREE: true,
     TIMEOUTS: true,
     POLLING: false,
     POLLING_FSSTAT_DELTA: false
   }
+
+  if (!_usePolling) INFO.POLLING = true
 }
 
 function poll (filepath) {
@@ -100,10 +131,11 @@ function poll (filepath) {
             // double checking to make sure the file has been actually removed
             wfile.enoents = (wfile.enoents || 0) + 1 // increment double check counter
             if (wfile.enoents < MAX_ENOENTS) {
+              INFO.ENOENT && console.log('enoents: ' + wfile.enoents)
               clearTimeout(wfile.timeout) // recheck quicker
               wfile.timeout = setTimeout(function () {
                 poll(filepath)
-              }, 5) // retry (double check) very soon
+              }, 10) // retry (double check) very soon
             } else {
               // doubel checks still failling, assume file was removed
               wfile.exists = false
@@ -162,6 +194,7 @@ function poll (filepath) {
             // edge case no longer relevant, free up memory
             if (wfile._content) {
               delete wfile._content
+              INFO.EDGE_FREE && console.log('freeing up edge case memory')
             }
           }
         }
@@ -247,10 +280,43 @@ function poll (filepath) {
       }
 
       // schedule next poll
-      clearTimeout(wfile.timeout)
-      wfile.timeout = setTimeout(function () {
-        poll(filepath)
-      }, _interval_override || wfile.interval)
+      // clearTimeout(wfile.timeout)
+      // wfile.timeout = setTimeout(function () {
+      //   poll(filepath)
+      // }, _interval_override || wfile.interval)
+
+      // schedule next poll
+      if (_usePolling) {
+        clearTimeout(wfile.timeout)
+        wfile.timeout = setTimeout(function () {
+          poll(filepath)
+        }, _interval_override || wfile.interval)
+      } else {
+        if (!wfile._fsWatch) { // file already being watched
+          INFO.FSWATCH && console.log('re-attaching fs.watch (probably due to rename evt closing previous fs.watch:er)')
+          var fsWatch = fs.watch( filepath )
+          wfile._fsWatch = fsWatch
+
+          fsWatch.on('change', function ( type ) {
+            INFO.FSWATCH && console.log('fs.watch evt: ' + type)
+            if (type === 'rename' || type === 'unlink') {
+              wfile._fsWatch.close()
+              delete wfile._fsWatch
+              INFO.FSWATCH && console.log('fs.watch closed (due to rename)')
+              clearTimeout(wfile.timeout)
+              wfile.timeout = setTimeout(function () {
+                poll( filepath )
+              }, 5)
+            } else {
+              clearTimeout(wfile.timeout)
+              wfile.timeout = setTimeout(function () {
+                poll( filepath )
+              }, 5)
+            }
+          })
+        }
+      } // _usePolling
+
     } // else (no errors)
   }) // fs.stat
 }
@@ -286,10 +352,35 @@ function startPolling (filepath) {
       wfile._content = fs.readFileSync(filepath).toString('utf8')
     }
 
-    clearTimeout(wfile.timeout)
-    wfile.timeout = setTimeout(function () {
-      poll(filepath)
-    }, wfile.interval)
+    if (_usePolling) {
+      clearTimeout(wfile.timeout)
+      wfile.timeout = setTimeout(function () {
+        poll(filepath)
+      }, wfile.interval)
+    } else {
+      if (wfile._fsWatch) { wfile._fsWatch.close() } // shouldn't happen
+
+      var fsWatch = fs.watch( filepath )
+      wfile._fsWatch = fsWatch
+
+      fsWatch.on('change', function ( type ) {
+        INFO.FSWATCH && console.log('fs.watch evt: ' + type)
+        if (type === 'rename' || type === 'unlink') {
+          wfile._fsWatch.close()
+          delete wfile._fsWatch
+          INFO.FSWATCH && console.log('fs.watch closed (due to rename)')
+          clearTimeout(wfile.timeout)
+          wfile.timeout = setTimeout(function () {
+            poll( filepath )
+          }, 5)
+        } else {
+          clearTimeout(wfile.timeout)
+          wfile.timeout = setTimeout(function () {
+            poll( filepath )
+          }, 5)
+        }
+      })
+    }
   })
 }
 
@@ -389,6 +480,7 @@ function createFileWatcher (filepath) {
   var _listeners = []
 
   function _trigger (info) {
+    INFO.TRIGGER && console.log('triggering type: ' + info.type)
     // trigger callbacks/listeners listening on this file
     _listeners.forEach(function (callback) {
       callback(info)
