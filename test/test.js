@@ -1,12 +1,218 @@
 var rimraf = require('rimraf')
 var mkdirp = require('mkdirp')
+var ncp = require('ncp').ncp
 
 var fs = require('fs')
 var path = require('path')
+var childProcess = require('child_process')
 
 var miteru = require('../index.js')
 
 var test = require('tape')
+
+function run ( filepath ) {
+  var resolved = require.resolve( filepath )
+  delete require.cache[ resolved ]
+  return require( resolved )
+}
+
+
+var _env = Object.assign({}, process.env)
+function prepare (next) {
+  process.env = Object.assign({}, _env)
+
+  rimraf(path.join(__dirname, 'tmp'), function (err) {
+    if (err) throw err
+    ncp(path.join(__dirname, 'samples'), path.join(__dirname, 'tmp'), function (err) {
+      if (err) throw err
+      if (run(path.join(__dirname, 'tmp', 'main.js')) !== 42) {
+        throw new Error('test preparation failed.')
+      }
+      if (run(path.join(__dirname, 'tmp', 'animal.js')) !== 'giraffe') {
+        throw new Error('test preparation failed.')
+      }
+      next()
+    })
+  })
+}
+
+function exec (cmd, opts, callback) {
+  if (!callback) {
+    callback = opts
+    opts = {}
+  }
+  cmd = cmd.split(/\s+/)
+  var spawn = childProcess.spawn(cmd[0], cmd.slice(1), opts)
+
+  var buffer = ''
+
+  spawn.stdout.on('data', function (chunk) {
+    buffer += chunk.toString('utf8')
+  })
+
+  spawn.stderr.on('data', function (chunk) {
+    buffer += chunk.toString('utf8')
+  })
+
+  spawn.on('exit', function () {
+    callback(buffer)
+  })
+
+  return spawn
+}
+
+test('exit when no files are being watched (fs.watch mode)', function (t) {
+  t.timeoutAfter(3000)
+  t.plan(1)
+
+  prepare(function () {
+    process.env.MITERU_DEBUG_FSWATCH = true
+    process.env.MITERU_DEBUG_UNWATCHING = true
+
+    exec('node ' + path.join(__dirname, 'test-unwatch.js'), function (buffer) {
+      var expected = [
+        'add: 999',
+        'fs.watch attached: ' + path.join(__dirname, 'tmp', 'unwatch.js'),
+        'unwatching: ' + path.join(__dirname, 'tmp', 'unwatch.js'),
+        ''
+      ].join('\n')
+
+      t.equal(
+        buffer,
+        expected,
+        'exited successfully with expected output'
+      )
+    })
+  }) // prepare
+})
+
+test('exit when no files are being watched (polling mode)', function (t) {
+  t.timeoutAfter(3000)
+  t.plan(1)
+
+  prepare(function () {
+    process.env.MITERU_FORCE_POLLING = true
+
+    process.env.MITERU_DEBUG_FSWATCH = true
+    process.env.MITERU_DEBUG_UNWATCHING = true
+
+    exec('node ' + path.join(__dirname, 'test-unwatch.js'), function (buffer) {
+      var expected = [
+        'add: 999',
+        'unwatching: ' + path.join(__dirname, 'tmp', 'unwatch.js'),
+        ''
+      ].join('\n')
+
+      t.equal(
+        buffer,
+        expected,
+        'exited successfully with expected output'
+      )
+    })
+  }) // prepare
+})
+
+return undefined
+
+test('watch a single file', function (t) {
+  t.timeoutAfter(1500)
+  t.plan(2 + 4)
+
+  prepare(function () {
+    var expected = [
+      ''
+      , 'modification: 64'
+      , 'modification: 88'
+      , 'unlink'
+      , 'add: 11'
+    ]
+    var buffer = ['']
+
+    var filepath = './tmp/main.js'
+    var w = miteru.create()
+    w.watch( filepath )
+
+    w.on('add', function () {
+      buffer.push('add: ' + run('./tmp/main.js'))
+    })
+
+    w.on('unlink', function () {
+      try {
+        fs.readFileSync( filepath )
+        t.fail('unlink event FAILURE (File still exists)')
+      } catch (err) {
+        t.equal(err.code, 'ENOENT', 'unlink event OK (ENOENT)')
+        buffer.push('unlink')
+      }
+    })
+
+    w.on('modification', function () {
+      buffer.push('modification: ' + run('./tmp/main.js'))
+    })
+
+    var actions = [
+      function () {
+        fs.writeFileSync( filepath, 'module.exports = 64' )
+      },
+      function () {
+        fs.writeFileSync( filepath, 'module.exports = 88' )
+      },
+      function () {
+        rimraf.sync( filepath )
+      },
+      function () {
+        fs.writeFileSync( filepath, 'module.exports = 11' )
+      },
+    ]
+
+    setTimeout(next, 200)
+    function next () {
+      var a = actions.shift()
+      if (a) {
+        console.log('doing action')
+        a()
+        setTimeout(next, 200)
+      } else {
+        setTimeout(finish, 300)
+      }
+    }
+
+    function finish () {
+      console.log('actions finished')
+      t.deepEqual(
+        buffer,
+        expected,
+        'expected output OK'
+      )
+
+      t.equal(
+        miteru.getStatus().files_length,
+        1,
+        '1 file still being watched as expected'
+      )
+      t.equal(
+        miteru.getStatus().listeners_length,
+        1,
+        '1 more listener still active as expected'
+      )
+
+      w.close()
+
+      t.equal(
+        miteru.getStatus().files_length,
+        0,
+        'no more files being watched'
+      )
+      t.equal(
+        miteru.getStatus().listeners_length,
+        0,
+        'no more file event listeners'
+      )
+    }
+  })
+})
+
+/*
 
 function cleanup (done) {
   rimraf('./test/tmp', function () {
@@ -457,3 +663,5 @@ test('cleanup test files', function (t) {
     }
   })
 })
+
+*/

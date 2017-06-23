@@ -16,17 +16,14 @@ var _watchedFiles = {} // files being watched by miteru
 // var _watchers = {}
 // var _textContents = {} // TODO
 
-var _usePolling = true
+var defaults = {
+  polling: true
+}
 
 // make sue of fs.watch for improved low cpu polling on OS X by default
 var platform = require('os').platform()
 if (platform === 'darwin') {
-  _usePolling = false
-}
-
-// force polling from env variable
-if (process.env.MITERU_USE_POLLING) {
-  _usePolling = true
+  defaults.polling = false
 }
 
 var _running = true
@@ -55,12 +52,11 @@ var WARM_POLL_INTERVAL = 200
 var COLD_POLL_INTERVAL = 500
 var FREEZING_POLL_INTERVAL = 800
 
-var _errors = {}
-
 var _startTime
 
-var _enoents = {}
-var MAX_ENOENTS = 10
+// var MAX_ENOENTS = 10
+var MAX_BUSY_TRIES = 10
+var BUSY_TRY_INTERVAL = 10 // milliseconds
 
 // edge case workaround requires to read in, compare and temporarily
 // store the file contents -- only do this for reasonably sized files.
@@ -72,19 +68,19 @@ var MAX_EDGE_CASE_FILESIZE = (1024 * 1024 * 10)
 var EDGE_CASE_RESOLUTION = 1000 // file timestamp precision
 
 var INFO = {
-  STATE_CHANGE: false,
-  TRIGGER: false,
-  INITIAL: false,
-  ENOENT: false,
-  FSWATCH: false,
-  FIRST_MODIFICATION: false,
-  WARNING: false,
-  WATCHING: false,
-  UNWATCHING: false,
-  EDGE_FREE: false,
-  TIMEOUTS: false,
-  POLLING: false,
-  POLLING_FSSTAT_DELTA: false
+  STATE_CHANGE: !!process.env.MITERU_DEBUG_STATE_CHANGE,
+  TRIGGER: !!process.env.MITERU_DEBUG_TRIGGER,
+  INITIAL: !!process.env.MITERU_DEBUG_INITIAL,
+  ENOENT: !!process.env.MITERU_DEBUG_ENOENT,
+  FSWATCH: !!process.env.MITERU_DEBUG_FSWATCH,
+  FIRST_MODIFICATION: !!process.env.MITERU_DEBUG_FIRST_MODIFICATION,
+  WARNING: !!process.env.MITERU_DEBUG_WARNING,
+  WATCHING: !!process.env.MITERU_DEBUG_WATCHING,
+  UNWATCHING: !!process.env.MITERU_DEBUG_UNWATCHING,
+  EDGE_FREE: !!process.env.MITERU_DEBUG_EDGE_FREE,
+  TIMEOUTS: !!process.env.MITERU_DEBUG_TIMEOUTS,
+  POLLING: !!process.env.MITERU_DEBUG_POLLING,
+  POLLING_FSSTAT_DELTA: !!process.env.MITERU_DEBUG_POLLING_FSSTAT_DELTA
 }
 
 // turn on a bunch of debugging info in debugging mode
@@ -105,7 +101,7 @@ if (process.env.DEBUG_MITERU) {
     POLLING_FSSTAT_DELTA: false
   }
 
-  if (!_usePolling) INFO.POLLING = true
+  if (!defaults.polling) INFO.POLLING = true
 }
 
 // TODO
@@ -148,6 +144,10 @@ function poll (filepath) {
 
       switch (err.code) {
         case 'ENOENT':
+        case 'EBUSY':
+        case 'ENOTEMPTY':
+        case 'EPERM':
+        case 'EMFILE':
           // schedule next poll
           clearTimeout(wfile.timeout)
           wfile.timeout = setTimeout(function () {
@@ -157,13 +157,13 @@ function poll (filepath) {
           if (wfile.exists) { // file should exist (existed previously)
             // file could be busy/locked temporarily so we so a bit of
             // double checking to make sure the file has been actually removed
-            wfile.enoents = (wfile.enoents || 0) + 1 // increment double check counter
-            if (wfile.enoents < MAX_ENOENTS) {
-              INFO.ENOENT && console.log('enoents: ' + wfile.enoents)
+            wfile.busyTries = (wfile.busyTries || 0) + 1 // increment attempt counter
+            if (wfile.busyTries < MAX_BUSY_TRIES) {
+              INFO.ENOENT && console.log('busyTries: ' + wfile.busyTries)
               clearTimeout(wfile.timeout) // recheck quicker
               wfile.timeout = setTimeout(function () {
                 poll(filepath)
-              }, 10) // retry (double check) very soon
+              }, BUSY_TRY_INTERVAL) // retry very soon
             } else {
               // doubel checks still failling, assume file was removed
               wfile.exists = false
@@ -181,7 +181,7 @@ function poll (filepath) {
           throw err
       }
     } else { // no errors
-      wfile.enoents = 0 // successful read, clear ENOENT counter
+      wfile.busyTries = 0 // successful read, clear ENOENT counter
 
       if (!wfile.exists) {
         wfile.exists = true
@@ -338,23 +338,23 @@ function poll (filepath) {
       // }, _interval_override || wfile.interval)
 
       // schedule next poll
-      if (_usePolling) {
+      if (wfile.options.polling) {
         clearTimeout(wfile.timeout)
         wfile.timeout = setTimeout(function () {
           poll(filepath)
         }, _interval_override || wfile.interval)
       } else {
-        if (!wfile._fsWatch) { // file already being watched
-          INFO.FSWATCH && console.log('re-attaching fs.watch (probably due to rename evt closing previous fs.watch:er)')
+        if (!wfile._fsWatch) { // fs.watch deleted probably due to rename evt closing previous fs.watch:er
+          INFO.FSWATCH && console.log('fs.watch attached: ' + filepath)
           var fsWatch = fs.watch( filepath )
           wfile._fsWatch = fsWatch
 
           fsWatch.on('change', function ( type ) {
-            INFO.FSWATCH && console.log('fs.watch evt: ' + type)
+            INFO.FSWATCH && console.log('fs.watch evt: ' + type + ' ' + filepath)
             if (type === 'rename' || type === 'unlink') {
               wfile._fsWatch.close()
               delete wfile._fsWatch
-              INFO.FSWATCH && console.log('fs.watch closed (due to rename)')
+              INFO.FSWATCH && console.log('fs.watch closed: ' + filepath)
               clearTimeout(wfile.timeout)
               wfile.timeout = setTimeout(function () {
                 poll( filepath )
@@ -407,7 +407,7 @@ function startPolling (filepath) {
       }
     }
 
-    if (_usePolling || !wfile.exists) {
+    if (wfile.options.polling || !wfile.exists) {
       clearTimeout(wfile.timeout)
       wfile.timeout = setTimeout(function () {
         poll(filepath)
@@ -417,6 +417,7 @@ function startPolling (filepath) {
 
       var fsWatch = fs.watch( filepath )
       wfile._fsWatch = fsWatch
+      INFO.FSWATCH && console.log('fs.watch attached: ' + filepath)
 
       fsWatch.on('change', function ( type ) {
         INFO.FSWATCH && console.log('fs.watch evt: ' + type)
@@ -441,7 +442,7 @@ function startPolling (filepath) {
 
 var _recentWarningCount = 0
 var _recentWarningTimeout
-function watchFile (filepath) {
+function watchFile (filepath, options) {
   // if (typeof callback !== 'funciton') {
   //   throw new Error('Callback function must be provided to _watch(filepath:string, callback:funciton)')
   // }
@@ -451,6 +452,7 @@ function watchFile (filepath) {
   while (filepath[filepath.length - 1] === path.sep) filepath = filepath.slice(0, -1)
 
   var wfile = _watchedFiles[filepath] || {}
+  wfile.options = options
 
   // make sure file isn't already being watched
   if (_watchedFiles[filepath] === undefined) {
@@ -475,7 +477,7 @@ function watchFile (filepath) {
         INFO.WARNING && console.log('warning: skipping node_modules or dotfile, [' + _recentWarningCount + '] times')
         _recentWarningCount = 0
       }
-      INFO.WATCHING && console.log('  \u001b[90mwatching\u001b[0m $fp'.replace('$fp', filepath))
+      INFO.WATCHING && console.log('watching $fp'.replace('$fp', filepath))
       startPolling(filepath)
     }
   } else { // TODO already being watched? Do nothing?
@@ -579,7 +581,19 @@ function createFileWatcher (filepath) {
   }
 }
 
-function _create () {
+function _create (options) {
+  options = options || {}
+  if (options.polling === undefined) options.polling = defaults.polling
+
+  // force polling from env variable
+  if (
+    process.env.FORCE_POLLING ||
+    process.env.MITERU_POLLING ||
+    process.env.MITERU_FORCE_POLLING
+  ) {
+    options.polling = true
+  }
+
   var _files = {}
   var _listeners = {}
 
@@ -594,7 +608,7 @@ function _create () {
     filepath = path.resolve(filepath) // normalize filepath (absolute filepath)
 
     if (!_files[filepath]) {
-      var w = watchFile(filepath)
+      var w = watchFile(filepath, options)
       var off = w.addEventListener(_trigger)
       _files[filepath] = {
         watcher: w,
