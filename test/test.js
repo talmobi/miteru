@@ -36,13 +36,9 @@ function prepare (next) {
   })
 }
 
-function exec (cmd, opts, callback) {
-  if (!callback) {
-    callback = opts
-    opts = {}
-  }
+function exec (cmd, callback) {
   cmd = cmd.split(/\s+/)
-  var spawn = childProcess.spawn(cmd[0], cmd.slice(1), opts)
+  var spawn = childProcess.spawn(cmd[0], cmd.slice(1))
 
   var buffer = ''
 
@@ -112,8 +108,6 @@ test('exit when no files are being watched (polling mode)', function (t) {
   }) // prepare
 })
 
-return undefined
-
 test('watch a single file', function (t) {
   t.timeoutAfter(1500)
   t.plan(2 + 4)
@@ -128,12 +122,12 @@ test('watch a single file', function (t) {
     ]
     var buffer = ['']
 
-    var filepath = './tmp/main.js'
+    var filepath = path.join(__dirname, 'tmp', 'main.js')
     var w = miteru.create()
     w.watch( filepath )
 
     w.on('add', function () {
-      buffer.push('add: ' + run('./tmp/main.js'))
+      buffer.push('add: ' + run( filepath ))
     })
 
     w.on('unlink', function () {
@@ -147,7 +141,7 @@ test('watch a single file', function (t) {
     })
 
     w.on('modification', function () {
-      buffer.push('modification: ' + run('./tmp/main.js'))
+      buffer.push('modification: ' + run( filepath ))
     })
 
     var actions = [
@@ -169,7 +163,6 @@ test('watch a single file', function (t) {
     function next () {
       var a = actions.shift()
       if (a) {
-        console.log('doing action')
         a()
         setTimeout(next, 200)
       } else {
@@ -178,7 +171,6 @@ test('watch a single file', function (t) {
     }
 
     function finish () {
-      console.log('actions finished')
       t.deepEqual(
         buffer,
         expected,
@@ -193,7 +185,7 @@ test('watch a single file', function (t) {
       t.equal(
         miteru.getStatus().listeners_length,
         1,
-        '1 more listener still active as expected'
+        '1 listener still active as expected'
       )
 
       w.close()
@@ -212,7 +204,6 @@ test('watch a single file', function (t) {
   })
 })
 
-/*
 
 function cleanup (done) {
   rimraf('./test/tmp', function () {
@@ -225,234 +216,14 @@ function cleanup (done) {
   })
 }
 
-test('watch single file once', function (t) {
-  t.plan(5 + 3)
-
-  cleanup(function () {
-    var filepath = path.resolve('./test/tmp/app.js')
-    fs.writeFileSync(filepath, 'hello world')
-    var now = new Date()
-
-    var events = [
-      function (info) {
-        t.equal(
-          info.filepath,
-          filepath,
-          'filepath OK'
-        )
-        t.ok(
-          info.mtime.getTime() >= now.getTime() &&
-          info.mtime.getTime() < (now.getTime() + 1500),
-          'mtime OK'
-        )
-        t.ok(
-          info.last_mtime.getTime() >= (now.getTime() - 1500) &&
-          info.last_mtime.getTime() < now.getTime(),
-          'last_mtime OK'
-        )
-        t.ok(
-          info.delta_mtime >= 900,
-          info.delta_mtime < 1500,
-          'delta_mtime OK'
-        )
-        t.equal(
-          info.type,
-          'modification',
-          'type OK'
-        )
-      }
-    ]
-
-    var w = miteru.create()
-    w.watch('./test/tmp/app.js')
-
-    w.on('modification', function (info) {
-      var e = events.shift()
-
-      if (e) {
-        e(info)
-      }
-
-      // should exit process since nothing else is left to watch
-      w.unwatch('./test/tmp/app.js')
-    })
-
-    function next () {
-      var a = actions.shift()
-      if (a) {
-        a()
-      } else {
-        console.log('no more actions')
-        t.timeoutAfter(1000, 'failed to stop watching after finishing tests')
-        t.equal(
-          actions.length,
-          0,
-          'no more actions'
-        )
-        t.equal(
-          miteru.getStatus().files_length,
-          0,
-          'no more files being watched'
-        )
-        t.equal(
-          miteru.getStatus().listeners_length,
-          0,
-          'no more file event listeners'
-        )
-      }
-    }
-
-    var actions = [
-      function () {
-        fs.writeFileSync(filepath, 'hello world')
-        console.log('file written: ' + filepath)
-        setTimeout(next, 1000)
-      }
-    ]
-
-    setTimeout(next, 1000)
-  })
-})
-
-test('watch single file many times', function (t) {
-  t.plan(5 * 3 + 3 + 4)
-
-  cleanup(function () {
-    var filepath = path.resolve('./test/tmp/app.js')
-    fs.writeFileSync(filepath, 'hello world')
-    var now = new Date()
-
-    var events = [
-      function (info) {
-        t.equal(
-          info.filepath,
-          filepath,
-          'filepath OK'
-        )
-        t.ok(
-          info.mtime.getTime() >= now.getTime() &&
-          info.mtime.getTime() < (now.getTime() + 1500),
-          'mtime OK'
-        )
-        t.ok(
-          info.last_mtime.getTime() >= (now.getTime() - 1500) &&
-          info.last_mtime.getTime() < now.getTime(),
-          'last_mtime OK'
-        )
-        t.ok(
-          info.delta_mtime >= 900,
-          info.delta_mtime < 1500,
-          'delta_mtime OK'
-        )
-        t.equal(
-          info.type,
-          'modification',
-          'type OK'
-        )
-        now = new Date() // update now for next event
-      }
-    ]
-
-    var w = miteru.create()
-    w.watch('./test/tmp/app.js')
-
-    w.on('modification', function (info) {
-      var e = events[0]
-
-      if (e) {
-        e(info)
-      }
-    })
-
-    function next () {
-      var a = actions.shift()
-      if (a) {
-        a()
-      } else {
-        console.log('no more actions')
-        t.timeoutAfter(1000, 'failed to stop watching after finishing tests')
-
-        t.equal(
-          actions.length,
-          0,
-          'no more actions'
-        )
-        t.equal(
-          miteru.getStatus().files_length,
-          1,
-          'file still being watched'
-        )
-        t.equal(
-          miteru.getStatus().listeners_length,
-          1,
-          '1 event listener active'
-        )
-
-        var w2 = miteru.create()
-        w2.watch('./test/tmp/app.js')
-        // w.on('modification', function () {
-        //   // do nothing
-        // })
-
-        t.equal(
-          miteru.getStatus().listeners_length,
-          2,
-          '2 event listeners active'
-        )
-
-        // should exit process since nothing else is left to watch
-        w.unwatch('./test/tmp/app.js')
-
-
-        t.equal(
-          miteru.getStatus().listeners_length,
-          1,
-          '1 event listener active'
-        )
-
-        w2.unwatch('./test/tmp/app.js')
-
-        t.equal(
-          miteru.getStatus().files_length,
-          0,
-          'no more files being watched'
-        )
-        t.equal(miteru.getStatus().listeners_length,
-          0,
-          'no more file event listeners'
-        )
-      }
-    }
-
-    var actions = [
-      function () {
-        fs.writeFileSync(filepath, 'hello world')
-        console.log('file written: ' + filepath)
-        setTimeout(next, 1000)
-      },
-      function () {
-        fs.writeFileSync(filepath, 'hello world')
-        console.log('file written: ' + filepath)
-        setTimeout(next, 1000)
-      },
-      function () {
-        fs.writeFileSync(filepath, 'hello world')
-        console.log('file written: ' + filepath)
-        setTimeout(next, 1000)
-      }
-    ]
-
-    setTimeout(next, 1000)
-  })
-})
-
 test('watch a bunch of files many times', function (t) {
   t.plan(13)
 
   cleanup(function () {
-    var filepath1 = path.resolve('./test/tmp/giraffe.js')
-    var filepath2 = path.resolve('./test/tmp/whale.css')
-    var filepath3 = path.resolve('./test/tmp/monkey')
+    var filepath1 = path.join(__dirname, 'tmp', 'giraffe.js')
+    var filepath2 = path.join(__dirname, 'tmp', 'whale.css')
+    var filepath3 = path.join(__dirname, 'tmp', 'monkey')
+
     fs.writeFileSync(filepath1, 'hello giraffe')
     fs.writeFileSync(filepath2, 'hello whale')
     fs.writeFileSync(filepath3, 'hello monkey')
@@ -479,12 +250,13 @@ test('watch a bunch of files many times', function (t) {
 
     var w1 = miteru.create()
     var w2 = miteru.create()
-    w1.watch('./test/tmp/giraffe.js')
-    w1.watch('./test/tmp/whale.css')
-    w1.watch('./test/tmp/monkey')
 
-    w2.watch('./test/tmp/whale.css')
-    w2.watch('./test/tmp/monkey')
+    w1.watch( filepath1 )
+    w1.watch( filepath2 )
+    w1.watch( filepath3 )
+
+    w2.watch( filepath2 )
+    w2.watch( filepath3 )
 
     var buffer1 = []
     var buffer2 = []
@@ -618,7 +390,7 @@ test('watch a bunch of files many times', function (t) {
       },
       function () {
         console.log('w2 unwatch filepath3')
-        w2.unwatch('./test/tmp/monkey') // unwatch file
+        w2.unwatch( filepath3 ) // unwatch file
         fs.writeFileSync(filepath3, 'hello monkey')
         console.log('file written: ' + filepath3)
         setTimeout(next, 300)
@@ -635,7 +407,7 @@ test('watch a bunch of files many times', function (t) {
       },
       function () {
         console.log('w2 re-watch filepath3')
-        w2.watch('./test/tmp/monkey') // rewatch previously unwatched file
+        w2.watch( filepath3 ) // rewatch previously unwatched file
         fs.writeFileSync(filepath3, 'hello monkey')
         console.log('file written: ' + filepath3)
         setTimeout(next, 300)
@@ -650,10 +422,9 @@ test('watch a bunch of files many times', function (t) {
 test('cleanup test files', function (t) {
   t.plan(1)
 
-  rimraf('./test/tmp', function () {
-    console.log('deleted ./test/tmp')
+  rimraf(path.join(__dirname, 'tmp'), function () {
     try {
-      fs.readFileSync('./test/tmp')
+      fs.readFileSync( path.join(__dirname, 'tmp') )
     } catch (err) {
       t.equal(
         err.code,
@@ -664,4 +435,3 @@ test('cleanup test files', function (t) {
   })
 })
 
-*/
