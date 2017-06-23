@@ -199,9 +199,9 @@ function poll (filepath) {
         wfile.size = stats.size
         wfile.interval = 100
 
-        // wfile._content = fs.readFileSync(filepath).toString('utf8')
-        _setContent( wfile, fs.readFileSync( filepath ) )
-        // TODO add timeout to free up memory on all wfile._content?
+        if (stats.size < (MAX_EDGE_CASE_FILESIZE)) {
+          _setContent( wfile, fs.readFileSync( filepath ) )
+        }
       } else {
         var _interval_override
         var changed = (stats.mtime > wfile.mtime) || (stats.size !== wfile.size)
@@ -223,8 +223,10 @@ function poll (filepath) {
               // console.log(content.slice(10))
               // console.log(wfile && wfile._content && wfile._content.slice(10))
               changed = true
-              // wfile._content = content
-              _setContent(wfile, content)
+
+              if (stats.size < (MAX_EDGE_CASE_FILESIZE)) {
+                _setContent( wfile, fs.readFileSync( filepath ) )
+              }
             }
 
             // clearTimeout(wfile._contentDeleteTimeout)
@@ -262,8 +264,9 @@ function poll (filepath) {
           wfile.ctime = stats.ctime
           wfile.size = stats.size
 
-          // wfile._content = fs.readFileSync( filepath ).toString('utf8')
-          _setContent( wfile, fs.readFileSync( filepath ) )
+          if (stats.size < (MAX_EDGE_CASE_FILESIZE)) {
+            _setContent( wfile, fs.readFileSync( filepath ) )
+          }
 
           wfile.watcher.trigger(info) // trigger all callbacks/listeners on this file
         }
@@ -399,8 +402,9 @@ function startPolling (filepath) {
       wfile.ctime = stats.ctime
       wfile.size = stats.size
 
-      // wfile._content = fs.readFileSync(filepath).toString('utf8')
-      _setContent( wfile, fs.readFileSync( filepath ) )
+      if (stats.size < (MAX_EDGE_CASE_FILESIZE)) {
+        _setContent( wfile, fs.readFileSync( filepath ) )
+      }
     }
 
     if (_usePolling || !wfile.exists) {
