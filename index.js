@@ -652,7 +652,10 @@ function _create (options) {
     var listeners = _listeners[type] || []
     if (!_listeners[type]) _listeners[type] = listeners
 
-    listeners.push(callback)
+    var i = listeners.indexOf(callback)
+    if (i === -1) {
+      listeners.push(callback)
+    }
 
     return function off () {
       var i = listeners.indexOf(callback)
