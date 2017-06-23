@@ -513,8 +513,13 @@ function unwatchFile (filepath) {
   INFO.UNWATCHING && console.log('unwatching: ' + filepath)
 
   // if (_watchers[filepath]) {
-  if (_watchedFiles[filepath]) {
-    clearTimeout(_watchedFiles[filepath].timeout)
+  var wfile = _watchedFiles[ filepath ]
+  if (wfile) {
+    clearTimeout( wfile.timeout )
+    if (wfile._fsWatch) {
+      wfile._fsWatch.close()
+      delete wfile._fsWatch
+    }
     delete _watchedFiles[filepath]
     // delete _files[filepath]
     // delete _mtimes[filepath]
