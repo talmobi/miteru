@@ -1,33 +1,27 @@
 var fs = require('fs')
 var path = require('path')
 
+var glob = require('glob')
+var minimatch = require('minimatch')
+
 // TODO (filters?)
 var _opts = {}
 
 var _watchedFiles = {} // files being watched by miteru
-
-// var _mtimes = {} // file mtimes
-// var _files = {} // files being watched
-// var _intervals = {} // variable polling intervals
-// var _timeouts = {} // polling setTimeouts
-
-// var _touched = {} // touched files (from start of process)
-
-// var _watchers = {}
-// var _textContents = {} // TODO
+var _watchedDirs = {} // directories being watched by miteru
 
 var defaults = {
   polling: true
 }
 
-// make sue of fs.watch for improved low cpu polling on OS X by default
+// make use of FSEvents API
 var platform = require('os').platform()
 if (platform === 'darwin') {
   defaults.polling = false
 }
 
 var _running = true
-process.on('exit', function () {
+process.on('exit', function () { // shut.. down.. everything!
   _running = false
   Object.keys( _watchedFiles ).forEach(function ( filepath ) {
     var wfile = _watchedFiles[filepath]
@@ -39,6 +33,7 @@ process.on('exit', function () {
   })
 })
 
+// file "temperature" based on time since last mtime
 var HOT_FILE = (1000 * 60 * 5) // 5 minutes in ms
 var SEMI_HOT_FILE = (1000 * 60 * 15) // 15 minutes in ms
 var WARM_FILE = (1000 * 60 * 60) // 60 minutes in ms
@@ -46,6 +41,7 @@ var COLD_FILE = (1000 * 60 * 60 * 3) // 3 hours in ms
 
 var INITIAL_FILE = (1000 * 60 * 1) // 1 minute in ms
 
+// polling intervals based on file activity (milliseconds)
 var HOT_POLL_INTERVAL = 33
 var SEMI_HOT_POLL_INTERVAL = 99
 var WARM_POLL_INTERVAL = 200
@@ -54,7 +50,7 @@ var FREEZING_POLL_INTERVAL = 800
 
 var _startTime
 
-// var MAX_ENOENTS = 10
+// read attempts before file is considered removed (unlink:ed)
 var MAX_BUSY_TRIES = 10
 var BUSY_TRY_INTERVAL = 10 // milliseconds
 
@@ -64,7 +60,14 @@ var BUSY_TRY_INTERVAL = 10 // milliseconds
 // within one second (file system file timestamp (mtime) precision/resolution)
 // aka mtime and size is the same -- this doesn't mean that the content is necessarily
 // the same so we have to compare the file contents
-var MAX_EDGE_CASE_FILESIZE = (1024 * 1024 * 10)
+var MAX_EDGE_CASE_FILESIZE = (1024 * 1024 * 25) // 10mb
+
+// time (in milliseconds) when the edge case applies
+// Mac file system mtime is accurate up to 1 second
+// (for file systems with millisecond or nano second precision
+// this could safely be skipped entirely aka
+// MAX_EDGE_CASE_FILESIZE = -1
+// EDGE_CASE_RESOLUTION = -1
 var EDGE_CASE_RESOLUTION = 1000 // file timestamp precision
 
 var INFO = {
