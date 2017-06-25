@@ -4,6 +4,21 @@
 var fs = require('fs')
 var path = require('path')
 
+var minimatch = require('minimatch')
+
+// https://github.com/isaacs/node-glob/blob/master/glob.js#L97-L116
+function hasMagic ( pattern ) {
+  set = new minimatch.Minimatch( pattern ).set
+
+  if ( set.length > 1 ) return true
+
+  for ( var j = 0; j < set[0].length; j++ ) {
+    if ( typeof set[ 0 ][ j ] !== 'string') return true
+  }
+
+  return false
+}
+
 function ignoreFilter (file, index, array) {
   var shouldIgnore = (
     file[0] === '.' ||
@@ -566,6 +581,9 @@ function watch ( filepath ) {
 var api = {}
 
 api.watch = function ( filepath ) {
+  var magical = hasMagic( filepath )
+  console.log('magical: ' + ( magical ))
+
   var watchers = {}
   var w = watch( filepath )
   watchers[ w.filepath ] = w
