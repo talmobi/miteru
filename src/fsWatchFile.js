@@ -4,6 +4,7 @@
 var fs = require('fs')
 var path = require('path')
 
+var glob = require('glob')
 var minimatch = require('minimatch')
 
 // https://github.com/isaacs/node-glob/blob/master/glob.js#L97-L116
@@ -58,12 +59,14 @@ var TEMPERATURE = {
 var filepath = path.resolve('a/b/file')
 
 var _watchers = {}
+var _shared = {}
 
 var DEBUG = {
   WATCHING: true,
   EVENT: true,
   AWAIT: false,
   READDIR: false,
+  DIR: true,
   DELETED_FILECONTENT: false
 }
 
@@ -137,81 +140,79 @@ function awaitDir ( filepath ) {
 
   DEBUG.AWAIT && console.log('awaitDir from: ' + filepath + ' at: ' + dirpath)
 
-  var d = _watchers[ dirpath ]
+  var w = _watchers[ dirpath ]
 
-  if (!d) {
-    try {
-      var stats = fs.statSync( dirpath )
-      if ( stats.isDirectory() ) {
-        d = _watchers[ dirpath ] = {}
+  if ( !w ) {
+    w = _watchers[ dirpath ] = {}
 
-        d.pollInterval = 100
+    w.filepath = dirpath
+    w.pollInterval = 100
+    w.type = 'unknown'
 
-        d.exists = true
-        d.size = stats.size
-        d.mtime = stats.mtime
+    // disable personal event emitting since this
+    // file is insofar only used as a proxy for other files
+    w._suppressDirEvents = true
 
-        d.type = 'directory'
-        d.filepath = dirpath
+    w.dirFiles = {}
+    w.dirAwaiting = [ filepath ]
 
-        d.dirAwaiting = [] // will add filepath to dirAwaiting outside the try/catch block
-        d.dirFiles = []
+    w.statInProgress = true
 
-        DEBUG.READDIR && console.log('fs.readdirSync: ' + dirpath)
-        var files = fs.readdirSync( dirpath )
-          .filter( ignoreFilter )
+    fs.stat( dirpath, function (err, stats) {
+      w.statInProgress = false
 
-        var newFiles = {}
-        files.forEach(function ( file ) {
-          newFiles[ file ] = file
-        })
+      if (err) {
+        switch (err.code) {
+          case 'ENOENT':
+            w.exists = false
+            return awaitDir( dirpath  )
+            break
 
-        d.dirFiles = newFiles
-
-        DEBUG.READDIR && console.log('files: ')
-        DEBUG.READDIR && console.log('  ' + files.join('\n  '))
+          default:
+            throw err
+        }
       } else {
-        throw new Error('awaitDir of non-directory')
+        if ( stats.isDirectory() ) {
+          w.type = 'directory'
+
+          w.exists = true
+          w.size = stats.size
+          w.mtime = stats.mtime
+
+          DEBUG.READDIR && console.log('fs.readdirSync: ' + dirpath)
+          var files = fs.readdirSync( dirpath )
+            .filter( ignoreFilter )
+
+          var newFiles = {}
+          files.forEach(function ( file ) {
+            newFiles[ file ] = file
+          })
+
+          w.dirFiles = newFiles
+
+          DEBUG.READDIR && console.log('files: ')
+          DEBUG.READDIR && console.log('  ' + files.join('\n  '))
+        } else {
+          throw new Error('awaitDir of non-directory')
+        }
       }
-    } catch (err) {
-      switch (err.code) {
-        case 'ENOENT':
-          DEBUG.AWAIT && console.log('recursive await (subdir ENOENT): ' + dirpath)
 
-          var w = _watchers[ dirpath ] = {}
-
-          w.pollInterval = 100
-          w.exists = false
-
-          w.type = 'unknown'
-          w.filepath = dirpath
-
-          w.dirAwaiting = [ filepath ]
-          w.dirFiles = []
-
-          return awaitDir( dirpath  )
-          break
-        default:
-          throw err
-      }
-    }
+      schedulePoll( w, 5 )
+    })
+  } else {
+    w.dirAwaiting.push( filepath ) // filepaths to poll on directory change
   }
 
-  // if (d.type !== 'directory') throw new Error('attempting to await from non-directory: ' + d.filepath)
+  // if (!d.exists) {
+  //   DEBUG.AWAIT && console.log('recursive await (subdir !d.exists)')
+  //   return awaitDir( dirpath  )
+  // }
 
-  d.dirAwaiting.push( filepath ) // filepaths to poll on directory change
+  // DEBUG.AWAIT && console.log( 'awaiting ' + filepath + ' at [' + d.type + ']: ' + d.filepath + ' (exists: ' + d.exists + ')' )
+  // DEBUG.AWAIT && console.log( d.filepath )
 
-  if (!d.exists) {
-    DEBUG.AWAIT && console.log('recursive await (subdir !d.exists)')
-    return awaitDir( dirpath  )
-  }
-
-  DEBUG.AWAIT && console.log( 'awaiting ' + filepath + ' at [' + d.type + ']: ' + d.filepath + ' (exists: ' + d.exists + ')' )
-
-  DEBUG.AWAIT && console.log( d.filepath )
-
-  // schedule next poll
-  schedulePoll( d )
+  // // schedule next poll
+  // schedulePoll( d )
 }
 
 function poll ( filepath ) {
@@ -226,7 +227,7 @@ function poll ( filepath ) {
   // }
 
   if ( w.type === 'unknown' ) {
-    console.log( '  polling unknown: ' + w.filepath )
+    // console.log( '  polling unknown: ' + w.filepath )
   }
 
   if ( w.statInProgress ) return undefined // already in progress
@@ -254,7 +255,7 @@ function poll ( filepath ) {
               }, ATTEMPT_INTERVAL) // retry very quickly
             } else { // MAX_ATTEMPTS reached
               if (err.code === 'ENOENT') {
-                var existedPreviously = w.exists
+                var existedPreviously = ( w.exists === true )
                 w.exists = false
                 w.forceAttempts = false
                 w.attempts = 0
@@ -262,7 +263,7 @@ function poll ( filepath ) {
                   // TODO trigger 'unlink'
                   switch ( w.type ) {
                     case 'directory':
-                      DEBUG.EVENT && console.log('unlinkDir: ' + filepath)
+                      !w._suppressDirEvents && DEBUG.EVENT && console.log('unlinkDir: ' + filepath)
                       break
                     case 'file':
                       DEBUG.EVENT && console.log('unlink: ' + filepath)
@@ -294,7 +295,7 @@ function poll ( filepath ) {
           throw err // unexpected error
       }
     } else {
-      var existedPreviously = w.exists
+      var existedPreviously = ( w.exists === true )
       w.forceAttempts = false
       w.attempts = 0
 
@@ -314,13 +315,24 @@ function poll ( filepath ) {
           .replace('$1', w.type)
           .replace('$2', type)
         )
-        console.log( msg )
+        // console.log( msg )
         // throw new Error(msg)
         // TODO handle this?
 
         w.type = type
         w.size = stats.size
         w.mtime = stats.mtime
+
+        // switch ( type ) {
+        //   case 'directory':
+        //     var newFiles = {}
+        //     var files = fs.readdirSync( filepath )
+        //       .filter( ignoreFilter )
+        //     files.forEach(function ( file ) {
+        //       newFiles[ file ] = file
+        //     })
+        //     w.dirFiles = newFiles
+        // }
       }
 
       if ( true ) {
@@ -329,7 +341,6 @@ function poll ( filepath ) {
         var skipEdgeCase = ( stats.size >= EDGE_CASE_MAX_SIZE )
         var isEdgy = ( ( Date.now() - stats.mtime ) < EDGE_CASE_INTERVAL )
 
-        // check edge case
         if ( hasChanged ) {
           if ( isEdgy && !skipEdgeCase ) {
             switch ( w.type ) {
@@ -343,6 +354,13 @@ function poll ( filepath ) {
                 break
 
               case 'directory':
+                var newFiles = {}
+                var files = fs.readdirSync( filepath )
+                  .filter( ignoreFilter )
+                files.forEach(function ( file ) {
+                  newFiles[ file ] = file
+                })
+                w.dirFiles = newFiles
                 break
 
               default:
@@ -350,7 +368,7 @@ function poll ( filepath ) {
                 throw new Error( m )
             }
           }
-        } else {
+        } else { // no changes -- check edge case to make sure
           if ( isEdgy && !skipEdgeCase ) {
             switch ( w.type ) {
               case 'file':
@@ -405,7 +423,7 @@ function poll ( filepath ) {
         // TODO trigger 'add'
         switch ( w.type ) {
           case 'directory':
-            DEBUG.EVENT && console.log('addDir: ' + filepath)
+            !w._suppressDirEvents && DEBUG.EVENT && console.log('addDir: ' + filepath)
             break
           case 'file':
             DEBUG.EVENT && console.log('add: ' + filepath)
@@ -427,14 +445,43 @@ function poll ( filepath ) {
               if ( _w ) {
                 // TODO
                 // file is being watched -- trigger poll
-                // console.log( 'dir change polling file: ' + _filepath )
+                console.log( 'dir change polling file: ' + _filepath )
                 schedulePoll( _w )
               } else {
                 // TODO
-                // file not being watchd
+                // file not being watched
                 // ignore OR check glob pattern if file matches
                 // and start watching
                 // console.log( 'ignore dir change for file (not being watched): ' + _filepath )
+
+                console.log( 'file in dir not being watched, checking...' )
+                _shared.patterns.forEach(function ( pattern ) {
+
+                  if ( minimatch( _filepath, pattern ) ) {
+                    // matches existing pattern, add to watch list
+                    console.log( 'matched pattern, watching: ' + _filepath )
+                    watch( _filepath, { _suppressDirEvents: true } )
+                  }
+
+                  // var opts = {
+                  //   cwd: filepath // dirpath
+                  // }
+
+                  // glob( pattern, opts, function ( err, files ) {
+                  //   if ( err ) throw err
+
+                  //   files.forEach(function ( file ) {
+                  //     var filepath = path.resolve( file )
+                  //     var w = _watchers[ filepath ]
+                  //     if ( w ) {
+                  //       w._internalOnly = false
+                  //     } else {
+                  //       a.add( filepath, )
+                  //     }
+                  //   })
+                  // })
+
+                })
               }
             })
             break
@@ -490,7 +537,8 @@ function schedulePoll ( w, forcedInterval ) {
   }, forcedInterval || interval)
 }
 
-function watch ( filepath ) {
+function watch ( filepath, opts ) {
+  opts = opts || {}
   filepath = path.resolve( filepath )
 
   var w = _watchers[ filepath ]
@@ -499,12 +547,21 @@ function watch ( filepath ) {
     console.log( 'file already being watched: ' + filepath )
   } else {
     w = _watchers[ filepath ] = {}
+
     w.filepath = filepath
     w.pollInterval = 100
     w.type = 'unknown'
 
-    w.dirFiles = []
+    w._suppressDirEvents = opts._suppressDirEvents || false
+
+    w.dirFiles = {}
     w.dirAwaiting = []
+
+    // DEBUG.WATCHING && console.log('watching [' + w.type + ']: ' + filepath + ' (exists: ' + w.exists + ')')
+
+    schedulePoll( w )
+
+    return w
 
     try {
       var stats = fs.statSync( filepath )
@@ -581,18 +638,52 @@ function watch ( filepath ) {
 var api = {}
 
 api.watch = function ( filepath ) {
-  var magical = hasMagic( filepath )
+  var magical = glob.hasMagic( filepath )
   console.log('magical: ' + ( magical ))
 
+  var shared = {}
   var watchers = {}
-  var w = watch( filepath )
-  watchers[ w.filepath ] = w
 
   var a = {}
 
-  a.add = function ( filepath ) {
-    var w = watch( filepath )
+  function _add ( filepath, opts ) {
+    var w = watch( filepath, opts )
     watchers[ w.filepath ] = w
+  }
+
+  a.add = _add
+
+  if ( magical ) {
+    var pattern = filepath
+
+    var globStarIndex = pattern.indexOf( '**' )
+    if ( globStarIndex !== -1 ) {
+      var p = pattern.slice( 0, globStarIndex + 2 ) + '/'
+      glob( p, function ( err, files ) {
+        if ( err ) throw err
+
+        files.forEach(function ( file ) {
+          var filepath = path.resolve( file )
+          console.log('watching dir: ' + filepath)
+          a.add( filepath, { _suppressDirEvents: true } )
+        })
+      })
+    }
+
+    _shared.patterns = _shared.patterns || []
+    _shared.patterns.push( pattern )
+
+    glob( pattern, function ( err, files ) {
+      if ( err ) throw err
+
+      files.forEach(function ( file ) {
+        var filepath = path.resolve( file )
+        a.add( file )
+      })
+    })
+
+  } else {
+    a.add( filepath )
   }
 
   return a
@@ -606,5 +697,7 @@ api.close = function () {
   })
 }
 
-var w2 = api.watch( path.join( filepath, '..' ) )
-w2.add( filepath )
+// var w2 = api.watch( path.join( filepath, '..' ) )
+// w2.add( filepath )
+
+var w = api.watch( '**/b/**/*' )
