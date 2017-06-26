@@ -223,7 +223,6 @@ function handleDirectoryStat ( w, stats ) {
   var init = false
 
   if ( w.type !== 'directory' ) {
-    // init event?
     init = true
   }
 
@@ -234,13 +233,14 @@ function handleDirectoryStat ( w, stats ) {
   var shouldCheckForChanges = ( stats.size !== w.size ) || ( stats.mtime > w.mtime )
 
   if ( shouldCheckForChanges ) {
-    console.log( '  dir size or mtime changed: ' + filepath )
+    DEBUG.DIR && console.log( 'DIR SHOULD CHECK: ' + filepath )
   }
 
   var skipEdgeCase = ( stats.size >= EDGE_CASE_MAX_SIZE )
   var isEdgy = ( ( Date.now() - stats.mtime ) < EDGE_CASE_INTERVAL )
 
   if ( isEdgy && !skipEdgeCase ) {
+    DEBUG.DIR && console.log( 'DIR IS EDGY: ' + filepath )
     shouldCheckForChanges = true
   }
 
@@ -248,7 +248,7 @@ function handleDirectoryStat ( w, stats ) {
 
   // need to read/update dir contents/files
   if ( init || shouldCheckForChanges ) {
-    var files = fs.readdirSync( filepath )
+    var files = fs.readdirSync( filepath ) // Sync is intended and preferred
       .filter( ignoreFilter ) // ignore .dotfiles and *node_modules*
 
     var counter = 0
@@ -261,13 +261,9 @@ function handleDirectoryStat ( w, stats ) {
       newFiles[ file ] = file
     })
 
-    var len = Object.keys( w.dirFiles ).length
     var filesRemoved = ( Object.keys( w.dirFiles ).length !== counter )
     var filesAdded = ( Object.keys( newFiles).length !== Object.keys( w.dirFiles ).length )
     hasReallyChanged = ( existedPreviously && ( filesAdded || filesRemoved ) )
-
-    // console.log( '  counter: ' + counter )
-    // console.log( '  len: ' + len )
 
     w.dirFiles = newFiles // update dirFiles
   }
@@ -279,23 +275,25 @@ function handleDirectoryStat ( w, stats ) {
 
   if ( init ) {
     // trigger init and/or addDir event?
-    console.log( '  dir: init: ' + filepath )
+    DEBUG.INIT && DEBUG.DIR_EVENTS && console.log( 'INIT DIR: ' + filepath )
   } else if ( !existedPreviously ) {
     // trigger addDir event?
-    console.log( '  dir: addDir: ' + filepath )
+    DEBUG.DIR_EVENTS && console.log( 'addDir: ' + filepath )
   }
 
   if ( w.dirAwaiting.length > 0 ) {
     if ( !existedPreviously || init || hasReallyChanged ) {
-      // trigger callbacks that have been waiting for this directory
-      // to appear or change
+      // trigger callbacks that have been waiting on this directory
+      // to change ( or appear? )
       w.dirAwaiting.forEach(function ( _filepath ) {
+        DEBUG.AWAIT && console.log( 'AWAIT: ' + _filepath )
         var _w = _watchers[ _filepath ]
         if ( _w ) {
           schedulePoll( _w, 5 )
         } else {
-          // a watcher should have been created during w.dirAwaiting.push()
-          var msg = ('(ignoring) dir change awaiting filepath watcher does not exist: ' + _filepath)
+          // shouldn't happen.. unless file has been unwatched? TODO
+          // a watcher should have been created during w.dirAwaiting.push()..
+          var msg = ('(ignoring?) dir change awaiting filepath watcher does not exist: ' + _filepath)
           console.log( msg )
           throw new Error( msg )
         }
@@ -306,13 +304,10 @@ function handleDirectoryStat ( w, stats ) {
   }
 
   if ( hasReallyChanged ) {
-    console.log('\n ==== ')
-    console.log('\n [' + (new Date()) + ']')
-    console.log( '  dir: hasReallyChanged: ' + filepath )
-    console.log('\n')
+    DEBUG.DIR && console.log( 'DIR CHANGED: ' + filepath )
   }
 
-  // init or new files added or old files removed
+  // on init or when files added/removed
   if ( init || hasReallyChanged ) {
     // need to check files in the directory.
     // new files need to be matched against patterns
@@ -365,7 +360,7 @@ function handleDirectoryStat ( w, stats ) {
           switch ( type ) {
             case 'directory':
               if ( _shared.hasGlobStar ) {
-                console.log( '  readdir found: directory: ' + _filepath )
+                DEBUG.DIR && console.log( '  (DIR CHANGED) NEW DIR: ' + _filepath )
                 // special case when a globStar is used -- we need to recursively watch
                 // directories and test if their files match patterns and if they do
                 // add them to the watch list
@@ -374,15 +369,16 @@ function handleDirectoryStat ( w, stats ) {
               break
 
             case 'file':
-              console.log( '  readdir found: file: ' + _filepath )
+              DEBUG.DIR && console.log( '  (DIR CHANGED) NEW FILE: ' + _filepath )
 
               _shared.patterns.forEach(function ( pattern ) {
 
                 if ( minimatch( _filepath, pattern ) ) {
                   // matches existing pattern, add to watch list
-                  console.log( 'matched pattern, watching: ' + _filepath )
+                  DEBUG.DIR && console.log( '  (DIR CHANGED) NEW FILE MATCHED PATTERN (watching)' )
                   watch( _filepath )
                 } else {
+                  DEBUG.DIR && console.log( '  (DIR CHANGED) NEW FILE NO MATCH (ignored)' )
                   console.log( 'file did not match pattern: \n  ' + _filepath  + '\n  [ ' + pattern + ']')
                 }
               })
