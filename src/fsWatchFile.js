@@ -264,6 +264,7 @@ function poll ( filepath ) {
                   switch ( w.type ) {
                     case 'directory':
                       !w._suppressDirEvents && DEBUG.EVENT && console.log('unlinkDir: ' + filepath)
+                      DEBUG.EVENT && console.log('unlinkDir: ' + filepath)
                       break
                     case 'file':
                       DEBUG.EVENT && console.log('unlink: ' + filepath)
@@ -333,6 +334,9 @@ function poll ( filepath ) {
         //     })
         //     w.dirFiles = newFiles
         // }
+      }
+
+      if ( w.type === 'directory' && !existedPreviously ) {
       }
 
       if ( true ) {
@@ -424,6 +428,17 @@ function poll ( filepath ) {
         switch ( w.type ) {
           case 'directory':
             !w._suppressDirEvents && DEBUG.EVENT && console.log('addDir: ' + filepath)
+            DEBUG.EVENT && console.log('addDir: ' + filepath)
+
+            var newFiles = {}
+            var files = fs.readdirSync( filepath )
+              .filter( ignoreFilter )
+            files.forEach(function ( file ) {
+              newFiles[ file ] = file
+            })
+            w.dirFiles = newFiles
+
+            hasChanged = true // need to check files inside the directory
             break
           case 'file':
             DEBUG.EVENT && console.log('add: ' + filepath)
@@ -445,8 +460,8 @@ function poll ( filepath ) {
               if ( _w ) {
                 // TODO
                 // file is being watched -- trigger poll
-                console.log( 'dir change polling file: ' + _filepath )
-                schedulePoll( _w )
+                // console.log( 'dir change polling file: ' + _filepath )
+                // schedulePoll( _w )
               } else {
                 // TODO
                 // file not being watched
@@ -454,33 +469,41 @@ function poll ( filepath ) {
                 // and start watching
                 // console.log( 'ignore dir change for file (not being watched): ' + _filepath )
 
-                console.log( 'file in dir not being watched, checking...' )
-                _shared.patterns.forEach(function ( pattern ) {
+                console.log( 'file in dir, checking... [' + _filepath + ']' )
 
-                  if ( minimatch( _filepath, pattern ) ) {
-                    // matches existing pattern, add to watch list
-                    console.log( 'matched pattern, watching: ' + _filepath )
-                    watch( _filepath, { _suppressDirEvents: true } )
+                fs.stat( _filepath, function (err, stats) {
+                  if ( err ) throw err
+                  var type = 'unknown'
+                  if ( stats.isFile() ) {
+                    type = 'file'
+                  } else if ( stats.isDirectory() ) {
+                    type = 'directory'
                   }
 
-                  // var opts = {
-                  //   cwd: filepath // dirpath
-                  // }
+                  switch ( type ) {
+                    case 'directory':
+                      if ( _shared.hasGlobStar ) {
+                        // special case when a globStar is used -- we need to recursively watch
+                        // directories and test if their files match patterns and if they do
+                        // add them to the watch list
+                        watch( _filepath, { _suppressDirEvents: true } )
+                      }
+                      break
 
-                  // glob( pattern, opts, function ( err, files ) {
-                  //   if ( err ) throw err
+                    case 'file':
+                      _shared.patterns.forEach(function ( pattern ) {
 
-                  //   files.forEach(function ( file ) {
-                  //     var filepath = path.resolve( file )
-                  //     var w = _watchers[ filepath ]
-                  //     if ( w ) {
-                  //       w._internalOnly = false
-                  //     } else {
-                  //       a.add( filepath, )
-                  //     }
-                  //   })
-                  // })
+                        if ( minimatch( _filepath, pattern ) ) {
+                          // matches existing pattern, add to watch list
+                          console.log( 'matched pattern, watching: ' + _filepath )
+                          watch( _filepath, { _suppressDirEvents: true } )
+                        }
+                      })
+                      break
 
+                    default:
+                      throw new Error( '"unknown" filetype during directory change event' )
+                  }
                 })
               }
             })
@@ -560,76 +583,6 @@ function watch ( filepath, opts ) {
     // DEBUG.WATCHING && console.log('watching [' + w.type + ']: ' + filepath + ' (exists: ' + w.exists + ')')
 
     schedulePoll( w )
-
-    return w
-
-    try {
-      var stats = fs.statSync( filepath )
-      w.exists = true
-      w.size = stats.size
-      w.mtime = stats.mtime
-
-      // update file type
-      if ( stats.isFile() ) {
-        w.type = 'file'
-      } else if ( stats.isDirectory() ) {
-        w.type = 'directory'
-      }
-
-      // prepare for edge case if necessary
-      var skipEdgeCase = ( stats.size >= EDGE_CASE_MAX_SIZE )
-      var isEdgy = ( ( Date.now() - stats.mtime ) < EDGE_CASE_INTERVAL )
-
-      switch ( w.type ) {
-        case 'file':
-          if ( isEdgy && !skipEdgeCase ) {
-            var fileContent = fs.readFileSync( filepath )
-            // save fileContent temporarily
-            // (for as long as the edge case applies)
-            w.fileContent = fileContent
-
-            clearTimeout( w.fileContentTimeout )
-            w.fileContentTimeout = setTimeout(function () {
-              delete w.fileContent // free up memory
-              console.log( 'deleted w.fileContent' )
-            }, EDGE_CASE_INTERVAL)
-          }
-          break
-
-        case 'directory':
-          // TODO
-          DEBUG.READDIR && console.log('fs.readdirSync: ' + filepath)
-          var files = fs.readdirSync( filepath )
-            .filter( ignoreFilter )
-
-          var newFiles = {}
-          files.forEach(function ( file ) {
-            newFiles[ file ] = file
-          })
-
-          w.dirFiles = newFiles
-
-          DEBUG.READDIR && console.log('files: ')
-          DEBUG.READDIR && console.log('  ' + files.join('\n  '))
-          break
-
-        default:
-          console.log('w.type unknown')
-      }
-    } catch (err) {
-      switch (err.code) {
-        case 'ENOENT':
-          w.exists = false
-          break
-        default:
-          throw err
-      }
-    }
-
-    DEBUG.WATCHING && console.log('watching [' + w.type + ']: ' + filepath + ' (exists: ' + w.exists + ')')
-
-    // schedule next poll
-    schedulePoll( w )
   }
 
   return w
@@ -654,10 +607,12 @@ api.watch = function ( filepath ) {
   a.add = _add
 
   if ( magical ) {
-    var pattern = filepath
+    var pattern = path.join( process.cwd(), filepath )
 
     var globStarIndex = pattern.indexOf( '**' )
     if ( globStarIndex !== -1 ) {
+      _shared.hasGlobStar = true
+
       var p = pattern.slice( 0, globStarIndex + 2 ) + '/'
       glob( p, function ( err, files ) {
         if ( err ) throw err
@@ -670,6 +625,7 @@ api.watch = function ( filepath ) {
       })
     }
 
+    _shared.hasMagic = true
     _shared.patterns = _shared.patterns || []
     _shared.patterns.push( pattern )
 
@@ -700,4 +656,4 @@ api.close = function () {
 // var w2 = api.watch( path.join( filepath, '..' ) )
 // w2.add( filepath )
 
-var w = api.watch( '**/b/**/*' )
+var w = api.watch( 'lib/**/*.js' )
