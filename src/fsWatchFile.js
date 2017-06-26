@@ -64,7 +64,7 @@ var _shared = {}
 var DEBUG = {
   WATCHING: true,
   EVENT: true,
-  AWAIT: false,
+  AWAITDIR: false,
   READDIR: false,
   DIR: true,
   DELETED_FILECONTENT: false
@@ -135,10 +135,10 @@ function setFileContent ( w, fileContent ) {
   }, EDGE_CASE_INTERVAL)
 }
 
-function awaitDir ( filepath ) {
+function awaitDirectory ( filepath ) {
   var dirpath = path.resolve( filepath, '..' )
 
-  DEBUG.AWAIT && console.log('awaitDir from: ' + filepath + ' at: ' + dirpath)
+  DEBUG.AWAITDIR && console.log('AWAITDIR from: ' + filepath + ' at: ' + dirpath)
 
   var w = _watchers[ dirpath ]
 
@@ -154,18 +154,18 @@ function awaitDir ( filepath ) {
     w._suppressDirEvents = true
 
     w.dirFiles = {}
-    w.dirAwaiting = [ filepath ]
+    w.awaitingFilepaths = [ filepath ]
 
-    w.statInProgress = true
+    w._locked = true
 
     fs.stat( dirpath, function (err, stats) {
-      w.statInProgress = false
+      w._locked = false
 
       if (err) {
         switch (err.code) {
           case 'ENOENT':
             w.exists = false
-            return awaitDir( dirpath  )
+            return awaitDirectory( dirpath  )
             break
 
           default:
@@ -193,26 +193,16 @@ function awaitDir ( filepath ) {
           DEBUG.READDIR && console.log('files: ')
           DEBUG.READDIR && console.log('  ' + files.join('\n  '))
         } else {
-          throw new Error('awaitDir of non-directory')
+          throw new Error( 'awaitDirectory of non-directory' )
         }
       }
 
       schedulePoll( w, 5 )
     })
   } else {
-    w.dirAwaiting.push( filepath ) // filepaths to poll on directory change
+    if ( w.type !== 'directory' ) throw new Error( 'awaitDirectory of non-directory' )
+    w.awaitingFilepaths.push( filepath ) // filepaths to poll on directory change
   }
-
-  // if (!d.exists) {
-  //   DEBUG.AWAIT && console.log('recursive await (subdir !d.exists)')
-  //   return awaitDir( dirpath  )
-  // }
-
-  // DEBUG.AWAIT && console.log( 'awaiting ' + filepath + ' at [' + d.type + ']: ' + d.filepath + ' (exists: ' + d.exists + ')' )
-  // DEBUG.AWAIT && console.log( d.filepath )
-
-  // // schedule next poll
-  // schedulePoll( d )
 }
 
 function handleFileStat ( w, stats ) {
@@ -233,14 +223,14 @@ function handleDirectoryStat ( w, stats ) {
   var shouldCheckForChanges = ( stats.size !== w.size ) || ( stats.mtime > w.mtime )
 
   if ( shouldCheckForChanges ) {
-    DEBUG.DIR && console.log( 'DIR SHOULD CHECK: ' + filepath )
+    DEBUG.DIR && console.log( 'DIR SHOULD CHECK : ' + filepath )
   }
 
   var skipEdgeCase = ( stats.size >= EDGE_CASE_MAX_SIZE )
   var isEdgy = ( ( Date.now() - stats.mtime ) < EDGE_CASE_INTERVAL )
 
   if ( isEdgy && !skipEdgeCase ) {
-    DEBUG.DIR && console.log( 'DIR IS EDGY: ' + filepath )
+    DEBUG.DIR && console.log( 'DIR IS EDGY      : ' + filepath )
     shouldCheckForChanges = true
   }
 
@@ -281,30 +271,31 @@ function handleDirectoryStat ( w, stats ) {
     DEBUG.DIR_EVENTS && console.log( 'addDir: ' + filepath )
   }
 
-  if ( w.dirAwaiting.length > 0 ) {
+  if ( w.awaitingFilepaths.length > 0 ) {
     if ( !existedPreviously || init || hasReallyChanged ) {
       // trigger callbacks that have been waiting on this directory
       // to change ( or appear? )
-      w.dirAwaiting.forEach(function ( _filepath ) {
-        DEBUG.AWAIT && console.log( 'AWAIT: ' + _filepath )
+      w.awaitingFilepaths.forEach(function ( _filepath ) {
+        DEBUG.AWAITDIR && console.log( 'AWAITDIR: ' + _filepath )
+
         var _w = _watchers[ _filepath ]
         if ( _w ) {
           schedulePoll( _w, 5 )
         } else {
           // shouldn't happen.. unless file has been unwatched? TODO
-          // a watcher should have been created during w.dirAwaiting.push()..
+          // a watcher should have been created during w.awaitingFilepaths.push()..
           var msg = ('(ignoring?) dir change awaiting filepath watcher does not exist: ' + _filepath)
           console.log( msg )
           throw new Error( msg )
         }
       })
 
-      w.dirAwaiting = []
+      w.awaitingFilepaths = []
     }
   }
 
   if ( hasReallyChanged ) {
-    DEBUG.DIR && console.log( 'DIR CHANGED: ' + filepath )
+    DEBUG.DIR && console.log( 'DIR CHANGED      : ' + filepath )
   }
 
   // on init or when files added/removed
@@ -375,11 +366,10 @@ function handleDirectoryStat ( w, stats ) {
 
                 if ( minimatch( _filepath, pattern ) ) {
                   // matches existing pattern, add to watch list
-                  DEBUG.DIR && console.log( '  (DIR CHANGED) NEW FILE MATCHED PATTERN (watching)' )
+                  DEBUG.DIR && console.log( '    MATCHED PATTERN (watching)' )
                   watch( _filepath )
                 } else {
-                  DEBUG.DIR && console.log( '  (DIR CHANGED) NEW FILE NO MATCH (ignored)' )
-                  console.log( 'file did not match pattern: \n  ' + _filepath  + '\n  [ ' + pattern + ']')
+                  DEBUG.DIR && console.log( '    NO MATCH (ignored)' )
                 }
               })
               break
@@ -410,20 +400,18 @@ function poll ( filepath ) {
     // console.log( '  polling unknown: ' + w.filepath )
   }
 
-  if ( w.locked ) {
-    console.log( 'file locked' )
+  if ( w._locked ) {
+    console.log( ' >>> file locked <<< ' ) // TODO
     return undefined // already in progress
   }
 
-  if ( w.statInProgress ) return undefined // already in progress
-  w.statInProgress = true
+  w._locked = true
 
   fs.stat(filepath, function (err, stats) {
     w = _watchers[ filepath ]
     if ( !w ) return undefined // watcher has been removed
-    clearTimeout( w.timeout )
 
-    w.statInProgress = false
+    w._locked = false
 
     if (err) {
       switch (err.code) {
@@ -461,7 +449,7 @@ function poll ( filepath ) {
                   // TODO add dir watcher? == #1 ==
                   // add this filepath to a list that will be polled
                   // when the directory receives a change event
-                  awaitDir( filepath ) // TODO
+                  awaitDirectory( filepath ) // TODO
                 }
               } else {
                 throw err // let the user know what's going on
@@ -474,7 +462,7 @@ function poll ( filepath ) {
               // TODO re-add to dir watcher? == #1 ==
               // add this filepath to a list that will be polled
               // when the directory receives a change event
-              awaitDir( filepath ) // TODO
+              awaitDirectory( filepath ) // TODO
             } else {
               throw err // let the user know what's going on
             }
@@ -521,7 +509,7 @@ function poll ( filepath ) {
         w.mtime = stats.mtime
       }
 
-      if ( true ) {
+      if ( existedPreviously ) {
         var hasChanged = ( stats.size !== w.size ) || ( stats.mtime > w.mtime )
 
         var skipEdgeCase = ( stats.size >= EDGE_CASE_MAX_SIZE )
@@ -703,21 +691,21 @@ function poll ( filepath ) {
       }
 
       if ( w.type === 'directory' && ( hasChanged || ( !existedPreviously && w.exists ) ) ) {
-        w.dirAwaiting.forEach(function ( _filepath ) {
+        w.awaitingFilepaths.forEach(function ( _filepath ) {
           var _w = _watchers[ _filepath ]
           if ( _w ) {
             // TODO
             // console.log( 'dir change polling awaiting filepath: ' + _filepath )
             schedulePoll( _w, 5 )
           } else {
-            // a watcher should have been created during w.dirAwaiting.push()
+            // a watcher should have been created during w.awaitingFilepaths.push()
             var msg = ('(ignoring) dir change awaiting filepath watcher does not exist: ' + _filepath)
             console.log( msg )
             throw new Error( msg )
           }
         })
 
-        w.dirAwaiting = []
+        w.awaitingFilepaths = []
       }
 
 
@@ -752,6 +740,7 @@ function watch ( filepath, opts ) {
 
   if (w) { // file already being watched
     console.log( 'file already being watched: ' + filepath )
+    w._suppressDirEvents = opts._suppressDirEvents || false
   } else {
     w = _watchers[ filepath ] = {}
 
@@ -764,11 +753,11 @@ function watch ( filepath, opts ) {
     w._suppressDirEvents = opts._suppressDirEvents || false
 
     w.dirFiles = {}
-    w.dirAwaiting = []
+    w.awaitingFilepaths = []
 
     // DEBUG.WATCHING && console.log('watching [' + w.type + ']: ' + filepath + ' (exists: ' + w.exists + ')')
 
-    schedulePoll( w )
+    schedulePoll( w, 5 )
   }
 
   return w
