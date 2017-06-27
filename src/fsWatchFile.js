@@ -7,6 +7,8 @@ var path = require('path')
 var glob = require('glob')
 var minimatch = require('minimatch')
 
+var ALWAYS_COMPARE_FILECONTENT = false
+
 // https://github.com/isaacs/node-glob/blob/master/glob.js#L97-L116
 function hasMagic ( pattern ) {
   set = new minimatch.Minimatch( pattern ).set
@@ -63,8 +65,9 @@ var _shared = {}
 
 var DEBUG = {
   WATCHING: true,
-  EVENT: true,
-  AWAITDIR: false,
+  FILE_EVENTS: true,
+  DIR_EVENTS: true,
+  AWAITDIR: true,
   READDIR: false,
   DIR: true,
   DELETED_FILECONTENT: false
@@ -128,11 +131,15 @@ function setFileContent ( w, fileContent ) {
   // (for as long as the edge case applies)
   w.fileContent = fileContent
 
-  clearTimeout( w.fileContentTimeout )
-  w.fileContentTimeout = setTimeout(function () {
-    delete w.fileContent // free up memory
-    DEBUG.DELETED_FILECONTENT && console.log( 'deleted w.fileContent: ' + filepath )
-  }, EDGE_CASE_INTERVAL)
+  // we can clear up the memory used to keep the file contents
+  // if ALWAYS_COMPARE_FILECONTENT is false
+  if ( ALWAYS_COMPARE_FILECONTENT === false ) {
+    clearTimeout( w.fileContentTimeout )
+    w.fileContentTimeout = setTimeout(function () {
+      delete w.fileContent // free up memory
+      DEBUG.DELETED_FILECONTENT && console.log( 'deleted w.fileContent: ' + filepath )
+    }, EDGE_CASE_INTERVAL)
+  }
 }
 
 function awaitDirectory ( filepath ) {
@@ -206,6 +213,97 @@ function awaitDirectory ( filepath ) {
 }
 
 function handleFileStat ( w, stats ) {
+  var filepath = w.filepath
+  var init = false
+
+  if ( w.type !== 'file' ) {
+    init = true
+  }
+
+  var existedPreviously = ( init === false && w.exists === true )
+
+  w.type = 'file'
+
+  // size changes or mtime increase are good indicators that the
+  // file has been modified*
+  //
+  // *not a 100% guarantee -- for example the file content may not have changed
+  // from the previous file content -- however, we do not care if the file content
+  // has not changed and we will avoid comparing/reading the file contents unless
+  // necessary -- for example during EDGE_CASE_INTERVAL we will have to check
+  // file contents -- or perhaps when a flag is set? ( ALWAYS_COMPARE_FILECONTENT ) TODO
+  var sizeChanged = ( stats.size !== w.size )
+  var mtimeChanged = ( stats.mtime > w.mtime )
+
+  if ( sizeChanged || mtimeChanged ) {
+    DEBUG.FILE && console.log( 'FILE (size || mtime) CHANGED: ' + filepath )
+  }
+
+  var skipEdgeCase = ( stats.size >= EDGE_CASE_MAX_SIZE )
+  var isEdgy = ( ( Date.now() - stats.mtime ) < EDGE_CASE_INTERVAL )
+
+  var shouldCompareFileContents = ALWAYS_COMPARE_FILECONTENT || false
+
+  if ( isEdgy && !skipEdgeCase ) {
+    DEBUG.FILE && console.log( 'FILE IS EDGY      : ' + filepath )
+
+    // during edge case period we can't rely on mtime or file size changes alone
+    // but we need to compare the actual contents of the file
+    shouldCompareFileContents = true
+  }
+
+
+  if ( shouldCompareFileContents ) {
+    DEBUG.FILE && console.log( 'FILE WILL COMPARE CONTENT   : ' + filepath )
+  }
+
+  var fileContentHasChanged = false
+
+  // determine if we need to read file contents
+  if ( sizeChanged || mtimeChanged || shouldCompareFileContents ) {
+    var fileContent = fs.readFileSync( filepath )
+
+    if ( !init && w.fileContent ) {
+      fileContentHasChanged = ( !fileContent.equals( w.fileContent ) )
+    }
+
+    if ( init || fileContentHasChanged ) {
+      // sets file content and sets a timeout of EDGE_CASE_INTERVAL milliseconds
+      // to free up the file content memory* ( since it's no longer relevant )
+      // ( *if ALWAYS_COMPARE_FILECONTENT is false of course )
+      setFileContent( w, fileContent )
+    }
+  }
+
+  // update watcher values
+  w.exists = true
+  w.size = stats.size
+  w.mtime = stats.mtime
+
+  // trigger events
+  if ( init ) {
+    // trigger init and/or addDir event?
+    DEBUG.INIT && DEBUG.FILE_EVENTS && console.log( 'INIT FILE: ' + filepath )
+  } else if ( !existedPreviously ) {
+    // trigger addDir event?
+    DEBUG.FILE_EVENTS && console.log( 'add: ' + filepath )
+  } else if ( existedPreviously ) {
+    if ( ALWAYS_COMPARE_FILECONTENT ) {
+      // only file content actual byte changes will trigger a change event
+      if ( fileContentHasChanged ) {
+        // TODO
+        DEBUG.FILE_EVENTS && console.log( 'change*: ' + filepath )
+      }
+    } else {
+      // TODO
+      // size or mtime changes is sufficient to trigger a change event (default)
+      if ( sizeChanged || mtimeChanged || fileContentHasChanged ) {
+        DEBUG.FILE_EVENTS && console.log( 'change: ' + filepath )
+      }
+    }
+  }
+
+  schedulePoll( w )
 }
 
 function handleDirectoryStat ( w, stats ) {
@@ -220,10 +318,16 @@ function handleDirectoryStat ( w, stats ) {
 
   w.type = 'directory'
 
+  // size changes or mtime increase are good indicators that something
+  // has changed* so we will need to check and compare the dir contents
+  //
+  // *not a 100% guarantee -- for example some text editors during
+  // saving actually writes to a new file and swaps (renames) the filenames
+  // (eg tmp files created/deleted)
   var shouldCheckForChanges = ( stats.size !== w.size ) || ( stats.mtime > w.mtime )
 
   if ( shouldCheckForChanges ) {
-    DEBUG.DIR && console.log( 'DIR SHOULD CHECK : ' + filepath )
+    DEBUG.DIR && console.log( 'DIR (size || mtime) CHANGED: ' + filepath )
   }
 
   var skipEdgeCase = ( stats.size >= EDGE_CASE_MAX_SIZE )
@@ -232,6 +336,10 @@ function handleDirectoryStat ( w, stats ) {
   if ( isEdgy && !skipEdgeCase ) {
     DEBUG.DIR && console.log( 'DIR IS EDGY      : ' + filepath )
     shouldCheckForChanges = true
+  }
+
+  if ( shouldCheckForChanges ) {
+    DEBUG.DIR && console.log( 'DIR WILL CHECK   : ' + filepath )
   }
 
   var hasReallyChanged = false
@@ -295,7 +403,7 @@ function handleDirectoryStat ( w, stats ) {
   }
 
   if ( hasReallyChanged ) {
-    DEBUG.DIR && console.log( 'DIR CHANGED      : ' + filepath )
+    DEBUG.DIR && console.log( 'DIR HAS CHANGED   : ' + filepath )
   }
 
   // on init or when files added/removed
@@ -313,9 +421,13 @@ function handleDirectoryStat ( w, stats ) {
       var _w = _watchers[ _filepath ]
 
       if ( _w ) {
+        DEBUG.DIR && console.log( '  (DIR CHANGED) OLD FILE:\n        ' + _filepath )
         // this file is already handled/being watched
         if ( init ) {
-          schedulePoll( _w )
+          DEBUG.DIR && console.log( '    ON DIR INIT (scheduling poll)' )
+          schedulePoll( _w, 5 )
+        } else {
+          DEBUG.DIR && console.log( '    ALREADY SETUP (ignored)' )
         }
       } else {
         // all other files need to be fs.stat:ed
@@ -333,9 +445,11 @@ function handleDirectoryStat ( w, stats ) {
         fs.stat( _filepath, function (err, stats) {
           statsFinished++
           if (statsFinished === statsInProgress ) {
-            w._locked = false
-            schedulePoll( w )
-            console.log( '  directory polling unlocked: ' + filepath )
+            process.nextTick(function () {
+              w._locked = false
+              schedulePoll( w )
+              console.log( '      dir unlocked: ' + filepath )
+            })
           }
 
           if ( err ) throw err
@@ -360,14 +474,14 @@ function handleDirectoryStat ( w, stats ) {
               break
 
             case 'file':
-              DEBUG.DIR && console.log( '  (DIR CHANGED) NEW FILE: ' + _filepath )
+              DEBUG.DIR && console.log( '  (DIR CHANGED) NEW FILE:\n        ' + _filepath )
 
               _shared.patterns.forEach(function ( pattern ) {
 
                 if ( minimatch( _filepath, pattern ) ) {
                   // matches existing pattern, add to watch list
-                  DEBUG.DIR && console.log( '    MATCHED PATTERN (watching)' )
-                  watch( _filepath )
+                  DEBUG.DIR && console.log( '    MATCHED PATTERN (adding to watch list)' )
+                  watch( _filepath, { type: 'file' } ) // set type to 'file' so that 'add' event is triggered
                 } else {
                   DEBUG.DIR && console.log( '    NO MATCH (ignored)' )
                 }
@@ -390,11 +504,6 @@ function poll ( filepath ) {
 
   var w = _watchers[ filepath ]
   if ( !w ) return undefined // watcher has been removed
-  clearTimeout( w.timeout )
-
-  // if ( w.type === 'directory' ) {
-  //   console.log( 'polling directory: ' + w.filepath )
-  // }
 
   if ( w.type === 'unknown' ) {
     // console.log( '  polling unknown: ' + w.filepath )
@@ -437,11 +546,18 @@ function poll ( filepath ) {
                   switch ( w.type ) {
                     case 'directory':
                       !w._suppressDirEvents && DEBUG.EVENT && console.log('unlinkDir: ' + filepath)
-                      DEBUG.EVENT && console.log('unlinkDir: ' + filepath)
+                      DEBUG.DIR_EVENTS && console.log('unlinkDir: ' + filepath)
+
+                      // TODO
+                      // foreach dirFile set w.attempts to MAX_ATTEMPTS
+                      // (since we are expecting the file to not exist obviously
+                      // since the dir has been removed)
                       break
+
                     case 'file':
-                      DEBUG.EVENT && console.log('unlink: ' + filepath)
+                      DEBUG.FILE_EVENTS && console.log('unlink: ' + filepath)
                       break
+
                     default:
                       throw new Error('unlink error -- unknown filetype')
                   }
@@ -490,235 +606,11 @@ function poll ( filepath ) {
         return handleDirectoryStat( w, stats )
       }
 
-
-      if ( type !== w.type ) {
-        // TODO -- is this an 'init' event?
-
-        var msg = (
-          '  warning: watched filepath [$fp] type has changed from [$1] to [$2]'
-          .replace('$fp', w.filepath)
-          .replace('$1', w.type)
-          .replace('$2', type)
-        )
-        // console.log( msg )
-        // throw new Error(msg)
-        // TODO handle this?
-
-        w.type = type
-        w.size = stats.size
-        w.mtime = stats.mtime
+      if ( type === 'file' ) {
+        return handleFileStat( w, stats )
       }
 
-      if ( existedPreviously ) {
-        var hasChanged = ( stats.size !== w.size ) || ( stats.mtime > w.mtime )
-
-        var skipEdgeCase = ( stats.size >= EDGE_CASE_MAX_SIZE )
-        var isEdgy = ( ( Date.now() - stats.mtime ) < EDGE_CASE_INTERVAL )
-
-        if ( hasChanged ) {
-          if ( isEdgy && !skipEdgeCase ) {
-            switch ( w.type ) {
-              case 'file':
-                // save fileContent temporarily
-                // (for as long as the edge case applies)
-                var fileContent = fs.readFileSync( filepath )
-                w.fileContent = fileContent
-
-                setFileContent( w, fileContent )
-                break
-
-              case 'directory':
-                var newFiles = {}
-                var files = fs.readdirSync( filepath )
-                  .filter( ignoreFilter )
-                files.forEach(function ( file ) {
-                  newFiles[ file ] = file
-                })
-                w.dirFiles = newFiles
-                break
-
-              default:
-                var m = ('w.type unknown')
-                throw new Error( m )
-            }
-          }
-        } else { // no changes -- check edge case to make sure
-          if ( isEdgy && !skipEdgeCase ) {
-            switch ( w.type ) {
-              case 'file':
-                // need to check file contents to determine if something has changed
-                if ( w.fileContent ) {
-                  var fileContent = fs.readFileSync( filepath )
-                  hasChanged = ( !fileContent.equals( w.fileContent ) )
-                }
-
-                setFileContent( w, fileContent )
-                break
-
-              case 'directory':
-                // TODO
-                var files = fs.readdirSync( filepath )
-                  .filter( ignoreFilter )
-
-                var counter = 0
-                var newFiles = {}
-                files.forEach(function ( file ) {
-                  if ( w.dirFiles[ file ] ) {
-                    counter++
-                  }
-                  newFiles[ file ] = file
-                })
-
-                hasChanged = ( counter !== Object.keys( w.dirFiles ).length )
-                w.dirFiles = newFiles
-
-                if ( hasChanged && DEBUG.READDIR ) {
-                  console.log('fs.readdirSync: ' + filepath + ' (changes)')
-                  console.log('files: ')
-                  console.log('  ' + files.join('\n  '))
-                } else {
-                  DEBUG.READDIR && console.log('fs.readdirSync: ' + filepath + ' (nothing changed)')
-                }
-                break
-
-              default:
-                var m = ('w.type unknown')
-                throw new Error( m )
-            }
-          }
-        }
-      }
-
-      w.exists = true
-      w.size = stats.size
-      w.mtime = stats.mtime
-
-      if ( !existedPreviously && w.exists ) {
-        // TODO trigger 'add'
-        switch ( w.type ) {
-          case 'directory':
-            !w._suppressDirEvents && DEBUG.EVENT && console.log('addDir: ' + filepath)
-            DEBUG.EVENT && console.log('addDir: ' + filepath)
-
-            var newFiles = {}
-            var files = fs.readdirSync( filepath )
-              .filter( ignoreFilter )
-            files.forEach(function ( file ) {
-              newFiles[ file ] = file
-            })
-            w.dirFiles = newFiles
-
-            hasChanged = true // need to check files inside the directory
-            break
-          case 'file':
-            DEBUG.EVENT && console.log('add: ' + filepath)
-            break
-          default:
-            throw new Error('add error -- unknown filetype')
-        }
-      }
-
-      if ( hasChanged ) {
-        // TODO trigger 'change'
-        switch ( w.type ) {
-          case 'directory':
-            DEBUG.DIR && console.log('  change in directory: ' + filepath)
-
-            Object.keys( w.dirFiles ).forEach(function ( file ) {
-              var _filepath = path.join( filepath, file )
-              var _w = _watchers[ _filepath ]
-              if ( _w ) {
-                // TODO
-                // file is being watched -- trigger poll
-                // console.log( 'dir change polling file: ' + _filepath )
-                // schedulePoll( _w )
-              } else {
-                // TODO
-                // file not being watched
-                // ignore OR check glob pattern if file matches
-                // and start watching
-                // console.log( 'ignore dir change for file (not being watched): ' + _filepath )
-
-                console.log( 'file in dir, checking... [' + _filepath + ']' )
-
-                fs.stat( _filepath, function (err, stats) {
-                  if ( err ) throw err
-
-                  var type = 'unknown'
-
-                  if ( stats.isFile() ) {
-                    type = 'file'
-                  } else if ( stats.isDirectory() ) {
-                    type = 'directory'
-                  }
-
-                  switch ( type ) {
-                    case 'directory':
-                      if ( _shared.hasGlobStar ) {
-                        // special case when a globStar is used -- we need to recursively watch
-                        // directories and test if their files match patterns and if they do
-                        // add them to the watch list
-                        watch( _filepath, { _suppressDirEvents: true } )
-                      }
-                      break
-
-                    case 'file':
-                      _shared.patterns.forEach(function ( pattern ) {
-
-                        if ( minimatch( _filepath, pattern ) ) {
-                          // matches existing pattern, add to watch list
-                          console.log( 'matched pattern, watching: ' + _filepath )
-                          watch( _filepath )
-                        }
-                      })
-                      break
-
-                    default:
-                      throw new Error( '"unknown" filetype during directory change event' )
-                  }
-                })
-              }
-            })
-            break
-
-          case 'file':
-            DEBUG.EVENT && console.log('change: ' + filepath)
-            break
-
-          default:
-            throw new Error('hasChanged error -- unknown filetype')
-        }
-      }
-
-      if ( w.type === 'directory' && ( hasChanged || ( !existedPreviously && w.exists ) ) ) {
-        w.awaitingFilepaths.forEach(function ( _filepath ) {
-          var _w = _watchers[ _filepath ]
-          if ( _w ) {
-            // TODO
-            // console.log( 'dir change polling awaiting filepath: ' + _filepath )
-            schedulePoll( _w, 5 )
-          } else {
-            // a watcher should have been created during w.awaitingFilepaths.push()
-            var msg = ('(ignoring) dir change awaiting filepath watcher does not exist: ' + _filepath)
-            console.log( msg )
-            throw new Error( msg )
-          }
-        })
-
-        w.awaitingFilepaths = []
-      }
-
-
-      // var o = {
-      //   filepath: filepath,
-      //   mtime: stats.mtime,
-      //   size: stats.size
-      // }
-      // console.log( o )
-
-      // TODO support FSEvents API?
-      // schedule next poll
-      schedulePoll( w )
+      throw new Error( 'polled unknown filetype [' + type + ']: ' + filepath )
     }
   })
 } // poll ( filepath )
@@ -746,7 +638,7 @@ function watch ( filepath, opts ) {
 
     w.filepath = filepath
     w.pollInterval = 100
-    w.type = 'unknown'
+    w.type = opts.type || 'unknown'
 
     // suppress dir events for directories that are only being watche for internal
     // library purposes
