@@ -74,7 +74,8 @@ var DEBUG = {
 }
 
 DEBUG = {
-  FILE_EVENTS: true
+  FILE_EVENTS: true,
+  TEMPERATURE: true
 }
 
 var _running = true
@@ -97,8 +98,18 @@ function unwatch ( filepath ) {
   }
 }
 
-function updatePollingInterval ( filepath ) {
-  var w = _watchers[ filepath ]
+function updatePollingInterval ( w ) {
+  var filepath = w.filepath
+
+  if ( w.type === 'directory' ) {
+    w.pollInterval = 300
+    return
+  }
+
+  if ( w.type !== 'file' ) {
+    throw new Error( 'trying to update pollInterval on non-file type [' + w.type + ']' )
+  }
+
   var now = Date.now()
   var delta = ( now - w.mtime )
   if ( w ) {
@@ -286,6 +297,8 @@ function handleFileStat ( w, stats ) {
   w.size = stats.size
   w.mtime = stats.mtime
 
+  updatePollingInterval( w )
+
   // trigger events
   if ( init ) {
     // trigger init and/or addDir event?
@@ -376,6 +389,8 @@ function handleDirectoryStat ( w, stats ) {
   w.exists = true
   w.size = stats.size
   w.mtime = stats.mtime
+
+  updatePollingInterval( w )
 
   if ( init ) {
     // trigger init and/or addDir event?
@@ -637,7 +652,9 @@ function poll ( filepath ) {
 function schedulePoll ( w, forcedInterval ) {
   clearTimeout( w.timeout )
   var interval = w.pollInterval
+
   if ( w.type !== 'file') interval = 300
+
   w.timeout = setTimeout(function () {
     poll( w.filepath )
   }, forcedInterval || interval)
