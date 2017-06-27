@@ -73,6 +73,10 @@ var DEBUG = {
   DELETED_FILECONTENT: false
 }
 
+DEBUG = {
+  FILE_EVENTS: true
+}
+
 var _running = true
 
 process.on('exit', function () {
@@ -219,6 +223,8 @@ function handleFileStat ( w, stats ) {
   if ( w.type !== 'file' ) {
     init = true
   }
+
+  if ( w.afterInit ) init = false
 
   var existedPreviously = ( init === false && w.exists === true )
 
@@ -383,12 +389,27 @@ function handleDirectoryStat ( w, stats ) {
     if ( !existedPreviously || init || hasReallyChanged ) {
       // trigger callbacks that have been waiting on this directory
       // to change ( or appear? )
-      w.awaitingFilepaths.forEach(function ( _filepath ) {
+      var awaitingFilepaths = w.awaitingFilepaths
+      w.awaitingFilepaths = []
+      awaitingFilepaths.forEach(function ( _filepath ) {
         DEBUG.AWAITDIR && console.log( 'AWAITDIR: ' + _filepath )
+
+        var relativePath = path.relative( filepath, _filepath )
 
         var _w = _watchers[ _filepath ]
         if ( _w ) {
-          schedulePoll( _w, 5 )
+          if ( w.dirFiles[ relativePath ] ) {
+            // it exists in the directory, poll it
+            DEBUG.AWAITDIR && console.log( '    AWAITDIR (delete & poll): ' + relativePath )
+            schedulePoll( _w, 5 )
+          } else {
+            DEBUG.AWAITDIR && console.log( '    AWAITDIR (keep & ignore): ' + relativePath )
+            // it doesn't exist in the directory, polling it would result
+            // in ENOENT -> which would lead to it being added to this directorys
+            // awaitingFilepaths list -- therefore don't poll and keep it in the
+            // awaitingFilepaths
+            w.awaitingFilepaths.push( _filepath )
+          }
         } else {
           // shouldn't happen.. unless file has been unwatched? TODO
           // a watcher should have been created during w.awaitingFilepaths.push()..
@@ -397,8 +418,6 @@ function handleDirectoryStat ( w, stats ) {
           throw new Error( msg )
         }
       })
-
-      w.awaitingFilepaths = []
     }
   }
 
@@ -481,7 +500,7 @@ function handleDirectoryStat ( w, stats ) {
                 if ( minimatch( _filepath, pattern ) ) {
                   // matches existing pattern, add to watch list
                   DEBUG.DIR && console.log( '    MATCHED PATTERN (adding to watch list)' )
-                  watch( _filepath, { type: 'file' } ) // set type to 'file' so that 'add' event is triggered
+                  watch( _filepath, { afterInit: true } )
                 } else {
                   DEBUG.DIR && console.log( '    NO MATCH (ignored)' )
                 }
@@ -638,7 +657,9 @@ function watch ( filepath, opts ) {
 
     w.filepath = filepath
     w.pollInterval = 100
-    w.type = opts.type || 'unknown'
+    w.type = 'unknown'
+
+    w.afterInit = opts.afterInit || false
 
     // suppress dir events for directories that are only being watche for internal
     // library purposes
