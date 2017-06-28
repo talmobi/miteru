@@ -510,7 +510,7 @@ function handleDirectoryStat ( w, stats ) {
             case 'file':
               DEBUG.DIR && console.log( '  (DIR CHANGED) NEW FILE:\n        ' + _filepath )
 
-              _shared.patterns.forEach(function ( pattern ) {
+              w.api.patterns.forEach(function ( pattern ) {
 
                 if ( minimatch( _filepath, pattern ) ) {
                   // matches existing pattern, add to watch list
@@ -666,11 +666,14 @@ function watch ( filepath, opts ) {
 
   var w = _watchers[ filepath ]
 
-  if (w) { // file already being watched
+  if ( w ) { // file already being watched
     console.log( 'file already being watched: ' + filepath )
     w._suppressDirEvents = opts._suppressDirEvents || false
   } else {
     w = _watchers[ filepath ] = {}
+
+    w.api = opts.api
+    if ( !w.api ) throw new Error( 'no API set' )
 
     w.filepath = filepath
     w.pollInterval = 100
@@ -684,6 +687,40 @@ function watch ( filepath, opts ) {
 
     w.dirFiles = {}
     w.awaitingFilepaths = []
+
+    // listeners
+    w._listeners = []
+
+    w._addEventListener = function (cb) {
+
+      w._listeners.push( cb )
+
+      // create a function to remove the callback listener
+      // that we are adding
+      var removeListener = function () {
+        var i = w._listeners.indexOf( cb )
+
+        if ( i !== -1 ) {
+          // remove the attached callback listener
+          var cb = w._listeners.splice( i, 1 )
+
+          // TODO deativate watcher if last listener is removed
+          if ( w._listeners.length === 1 ) {
+            clearTimeout( w.timeout )
+            // TODO clear FSEvents API?
+            delete _watchers[ filepath ]
+          }
+
+          // return the listener that was removed
+          return cb
+        } else {
+          throw new Error( 'attempted to remove a non-existing (already removed) listener: ' + filepath )
+        }
+      }
+
+      // return the fn to remove the attached callback listener
+      return removeListener
+    }
 
     // DEBUG.WATCHING && console.log('watching [' + w.type + ']: ' + filepath + ' (exists: ' + w.exists + ')')
 
@@ -702,14 +739,58 @@ api.watch = function ( filepath ) {
   var shared = {}
   var watchers = {}
 
-  var a = {}
+  var api = {}
 
-  function _add ( filepath, opts ) {
-    var w = watch( filepath, opts )
-    watchers[ w.filepath ] = w
+  var opts = {
+    api: api
   }
 
-  a.add = _add
+  api.hasMagicalPatterns = false
+  api.patterns = []
+
+  api.trigger = function ( evt, filepath ) {
+  }
+
+  api.add = function ( filepath ) {
+    var w = watch( filepath, opts )
+
+    if ( !watchers[ w.filepath ] ) {
+      // TODO how to share patterns?
+      var off = w._addEventListener( api.trigger )
+
+      watchers[ w.filepath ] = {
+        watcher: w,
+        unwatch: off
+      }
+    } else {
+      // TODO this is probably OK (eg multiple patterns may attempt to watch
+      // the same file)
+      throw new Error( 'api: file already being watched: ' + w.filepath )
+    }
+
+  }
+
+  api.unwatch = function ( filepath ) {
+    var magical = glob.hasMagic( filepath )
+
+    if ( !magical ) {
+      var w = watchers[ filepath ] || watchers[ path.resolve( filepath ) ]
+      if ( w ) {
+        w.unwatch()
+      }
+      delete watchers[ filepath ]
+      delete watchers[ path.resolve( filepath ) ]
+    } else {
+    }
+  }
+
+  api.close = function () {
+    Object.keys( watchers ).forEach(function ( filepath ) {
+      var w = watchers[ filepath ]
+      w.unwatch()
+    })
+    watchers = {}
+  }
 
   if ( magical ) {
     var pattern = path.join( process.cwd(), filepath )
@@ -718,36 +799,60 @@ api.watch = function ( filepath ) {
     if ( globStarIndex !== -1 ) {
       _shared.hasGlobStar = true
 
-      var p = pattern.slice( 0, globStarIndex + 2 ) + '/'
-      glob( p, function ( err, files ) {
+      var directoriesOnlyPattern = pattern.slice( 0, globStarIndex + 2 ) + '/'
+
+      // watch all directories recursively
+      // (the globstart ** is a special case so we need to
+      // watch directories recursively from where it roots)
+      glob( directoriesOnlyPattern, function ( err, files ) {
         if ( err ) throw err
 
         files.forEach(function ( file ) {
           var filepath = path.resolve( file )
           console.log('watching dir: ' + filepath)
-          a.add( filepath, { _suppressDirEvents: true } )
+          api.add( filepath, { _suppressDirEvents: true } )
         })
       })
+
     }
 
-    _shared.hasMagic = true
-    _shared.patterns = _shared.patterns || []
-    _shared.patterns.push( pattern )
+    api.hasMagicalPatterns = true // basically all patterns are magical?
+    api.patterns.push( pattern )
 
+    // watch all files (recursively) matching the pattern
     glob( pattern, function ( err, files ) {
       if ( err ) throw err
 
+      console.log( files )
+
       files.forEach(function ( file ) {
         var filepath = path.resolve( file )
-        a.add( file )
+        api.add( file )
       })
     })
 
   } else {
-    a.add( filepath )
+    api.add( filepath )
   }
 
-  return a
+  var userApi = {}
+
+  userApi.add = function ( filepath, opts ) {
+    api.add( filepath, ops )
+    return userApi
+  }
+
+  userApi.unwatch = function ( filepath ) {
+    api.unwatch( filepath )
+    return userApi
+  }
+
+  userApi.close = function () {
+    api.close()
+    return userApi
+  }
+
+  return userApi
 }
 
 api.close = function () {
