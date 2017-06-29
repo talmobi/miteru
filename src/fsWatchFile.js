@@ -818,10 +818,11 @@ api.watch = function ( filepath ) {
       })
     }
 
-    var starIndex = pattern.lastIndexOf( '*' )
+    // var starIndex = pattern.lastIndexOf( '*' )
+    var starIndex = pattern.lastIndexOf( '/' )
     if ( starIndex !== -1 ) {
       // TODO check?
-      var singleDirectoryPattern = pattern.slice( 0, starIndex + 0 ) + '/'
+      var singleDirectoryPattern = pattern.slice( 0, starIndex + 1 )
       glob( singleDirectoryPattern, function ( err, files ) {
         if ( err ) throw err
         console.log( 'single dirs: ' + files.join(', ') )
