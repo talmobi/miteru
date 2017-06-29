@@ -515,7 +515,8 @@ function handleDirectoryStat ( w, stats ) {
                 if ( minimatch( _filepath, pattern ) ) {
                   // matches existing pattern, add to watch list
                   DEBUG.DIR && console.log( '    MATCHED PATTERN (adding to watch list)' )
-                  watch( _filepath, { afterInit: true } )
+                  w.api.add( _filepath, { afterInit: true } )
+                  // watch( _filepath, { afterInit: true } )
                 } else {
                   DEBUG.DIR && console.log( '    NO MATCH (ignored)' )
                 }
@@ -751,8 +752,10 @@ api.watch = function ( filepath ) {
   api.trigger = function ( evt, filepath ) {
   }
 
-  api.add = function ( filepath ) {
-    var w = watch( filepath, opts )
+  api.add = function ( filepath, _opts ) {
+    _opts = Object.assign({}, opts, opts || {})
+    _opts.api = opts.api
+    var w = watch( filepath, _opts )
 
     if ( !watchers[ w.filepath ] ) {
       // TODO how to share patterns?
