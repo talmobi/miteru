@@ -816,7 +816,21 @@ api.watch = function ( filepath ) {
           api.add( filepath, { _suppressDirEvents: true } )
         })
       })
+    }
 
+    var starIndex = pattern.lastIndexOf( '*' )
+    if ( starIndex !== -1 ) {
+      // TODO check?
+      var singleDirectoryPattern = pattern.slice( 0, starIndex + 0 ) + '/'
+      glob( singleDirectoryPattern, function ( err, files ) {
+        if ( err ) throw err
+        console.log( 'single dirs: ' + files.join(', ') )
+        if (files.length !== 1) throw new Erro( 'unexpected error, expted a single directory, got zero or more' )
+        files.forEach(function ( file ) {
+          var filepath = path.resolve( file )
+          api.add( file )
+        })
+      })
     }
 
     api.hasMagicalPatterns = true // basically all patterns are magical?
@@ -869,4 +883,5 @@ api.close = function () {
 // var w2 = api.watch( path.join( filepath, '..' ) )
 // w2.add( filepath )
 
-var w = api.watch( 'lib/**/*.js' )
+// var w = api.watch( 'lib/**/*.js' )
+var w = api.watch( 'lib/foo/bar/*.js' )
