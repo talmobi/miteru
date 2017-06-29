@@ -503,7 +503,8 @@ function handleDirectoryStat ( w, stats ) {
                 // special case when a globStar is used -- we need to recursively watch
                 // directories and test if their files match patterns and if they do
                 // add them to the watch list
-                watch( _filepath, { _suppressDirEvents: true } )
+                w.api.add( _filepath, { _suppressDirEvents: true } )
+                // watch( _filepath, { _suppressDirEvents: true } )
               }
               break
 
@@ -661,7 +662,7 @@ function schedulePoll ( w, forcedInterval ) {
   }, forcedInterval || interval)
 }
 
-function watch ( filepath, opts ) {
+function watchFile ( filepath, opts ) {
   opts = opts || {}
   filepath = path.resolve( filepath )
 
@@ -729,7 +730,7 @@ function watch ( filepath, opts ) {
   }
 
   return w
-} // watch ( filepath )
+} // watchFile ( filepath )
 
 var api = {}
 
@@ -755,7 +756,7 @@ api.watch = function ( filepath ) {
   api.add = function ( filepath, _opts ) {
     _opts = Object.assign({}, opts, opts || {})
     _opts.api = opts.api
-    var w = watch( filepath, _opts )
+    var w = watchFile( filepath, _opts )
 
     if ( !watchers[ w.filepath ] ) {
       // TODO how to share patterns?
