@@ -61,6 +61,7 @@ var TEMPERATURE = {
 var filepath = path.resolve('a/b/file')
 
 var _watchers = {}
+var _fileWatchers = {}
 var _shared = {}
 
 var DEBUG = {
@@ -74,6 +75,8 @@ var DEBUG = {
 }
 
 DEBUG = {
+  DIR: true,
+  INIT: true,
   FILE_EVENTS: true,
   TEMPERATURE: true
 }
@@ -82,7 +85,7 @@ var _running = true
 
 process.on('exit', function () {
   _running = false
-  var filepaths = Object.keys( _watchers )
+  var filepaths = Object.keys( _fileWatchers )
   filepaths.forEach(function ( filepath ) {
     unwatch( filepath )
   })
@@ -91,10 +94,10 @@ process.on('exit', function () {
 function unwatch ( filepath ) {
   filepath = path.resolve( filepath )
 
-  var w = _watchers[ filepath ]
+  var w = _fileWatchers[ filepath ]
   if ( w ) {
     clearTimeout( w.timeout )
-    delete _watchers[ filepath ]
+    delete _fileWatchers[ filepath ]
   }
 }
 
@@ -162,10 +165,10 @@ function awaitDirectory ( filepath ) {
 
   DEBUG.AWAITDIR && console.log('AWAITDIR from: ' + filepath + ' at: ' + dirpath)
 
-  var w = _watchers[ dirpath ]
+  var w = _fileWatchers[ dirpath ]
 
   if ( !w ) {
-    w = _watchers[ dirpath ] = {}
+    w = _fileWatchers[ dirpath ] = {}
 
     w.filepath = dirpath
     w.pollInterval = 100
@@ -301,21 +304,21 @@ function handleFileStat ( w, stats ) {
 
   // trigger events
   if ( init ) {
-    // trigger init and/or addDir event?
+    // TODO trigger init and/or addDir event?
     DEBUG.INIT && DEBUG.FILE_EVENTS && console.log( 'INIT FILE: ' + filepath )
   } else if ( !existedPreviously ) {
-    // trigger addDir event?
+    // TODO trigger addDir event?
     DEBUG.FILE_EVENTS && console.log( 'add: ' + filepath )
   } else if ( existedPreviously ) {
     if ( ALWAYS_COMPARE_FILECONTENT ) {
-      // only file content actual byte changes will trigger a change event
+      // only file content actual byte changes will TODO trigger a change event
       if ( fileContentHasChanged ) {
         // TODO
         DEBUG.FILE_EVENTS && console.log( 'change*: ' + filepath )
       }
     } else {
       // TODO
-      // size or mtime changes is sufficient to trigger a change event (default)
+      // size or mtime changes is sufficient to TODO trigger a change event (default)
       if ( sizeChanged || mtimeChanged || fileContentHasChanged ) {
         DEBUG.FILE_EVENTS && console.log( 'change: ' + filepath )
       }
@@ -325,6 +328,7 @@ function handleFileStat ( w, stats ) {
   schedulePoll( w )
 }
 
+// TODO refactor dirFiles for multiple watcher instances
 function handleDirectoryStat ( w, stats ) {
   var filepath = w.filepath
   var init = false
@@ -411,7 +415,7 @@ function handleDirectoryStat ( w, stats ) {
 
         var relativePath = path.relative( filepath, _filepath )
 
-        var _w = _watchers[ _filepath ]
+        var _w = _fileWatchers[ _filepath ]
         if ( _w ) {
           if ( w.dirFiles[ relativePath ] ) {
             // it exists in the directory, poll it
@@ -452,7 +456,7 @@ function handleDirectoryStat ( w, stats ) {
 
     Object.keys( w.dirFiles ).forEach(function ( file ) {
       var _filepath = path.join( filepath, file )
-      var _w = _watchers[ _filepath ]
+      var _w = _fileWatchers[ _filepath ]
 
       if ( _w ) {
         DEBUG.DIR && console.log( '  (DIR CHANGED) OLD FILE:\n        ' + _filepath )
@@ -498,30 +502,64 @@ function handleDirectoryStat ( w, stats ) {
 
           switch ( type ) {
             case 'directory':
-              if ( _shared.hasGlobStar ) {
-                DEBUG.DIR && console.log( '  (DIR CHANGED) NEW DIR: ' + _filepath )
-                // special case when a globStar is used -- we need to recursively watch
-                // directories and test if their files match patterns and if they do
-                // add them to the watch list
-                w.api.add( _filepath, { _suppressDirEvents: true } )
-                // watch( _filepath, { _suppressDirEvents: true } )
-              }
+              DEBUG.DIR && console.log( '  (DIR CHANGED) NEW DIR: ' + _filepath )
+
+              Object.keys( _watchers ).forEach(function ( id ) {
+                var watcher = _watchers[ id ]
+                var patterns = watcher.patterns
+
+                var shouldAddToWatchList = false
+
+                for (var i = 0; i < patterns.length; i++) {
+                  var pattern = patterns[ i ]
+                  var dirPattern = getDirPattern( pattern )
+                  var dirPath = getDirPath( _filepath )
+                  if ( minimatch( dirPath, dirPattern ) ) {
+                    shouldAddToWatchList = true
+                    break
+                  }
+                }
+
+                if ( shouldAddToWatchList ) {
+                  var w = watchFile( _filepath )
+                  if ( _filepath !== w.filepath ) throw new Error( 'Error: filepath mismwatch' )
+                  watcher.filepaths[ _filepath ] = _filepath
+
+                  console.log( 'matched: ' + _filepath )
+                  // TODO trigger addDir?
+                }
+              })
               break
 
             case 'file':
               DEBUG.DIR && console.log( '  (DIR CHANGED) NEW FILE:\n        ' + _filepath )
 
-              w.api.patterns.forEach(function ( pattern ) {
+              Object.keys( _watchers ).forEach(function ( id ) {
+                var watcher = _watchers[ id ]
+                var patterns = Object.keys( watcher.patterns )
 
-                if ( minimatch( _filepath, pattern ) ) {
-                  // matches existing pattern, add to watch list
-                  DEBUG.DIR && console.log( '    MATCHED PATTERN (adding to watch list)' )
-                  w.api.add( _filepath, { afterInit: true } )
-                  // watch( _filepath, { afterInit: true } )
+                var matched = false
+
+                for (var i = 0; i < patterns.length; i++) {
+                  var pattern = patterns[ i ]
+                  if ( minimatch( _filepath, path.join( process.cwd(), pattern ) ) ) {
+                    matched = true
+                    break
+                  }
+                }
+
+                if ( matched ) {
+                  var w = watchFile( _filepath )
+                  if ( _filepath !== w.filepath ) throw new Error( 'Error: filepath mismwatch' )
+                  watcher.filepaths[ _filepath ] = _filepath
+
+                  console.log( ' + matched: ' + _filepath )
+                  // TODO trigger add?
                 } else {
-                  DEBUG.DIR && console.log( '    NO MATCH (ignored)' )
+                  console.log( ' - nomatch: ' + _filepath )
                 }
               })
+
               break
 
             default:
@@ -535,10 +573,33 @@ function handleDirectoryStat ( w, stats ) {
   schedulePoll( w )
 }
 
+function getDirPattern ( pattern ) {
+  var i = pattern.lastIndexOf( '/' )
+  var dirPattern = pattern.slice( 0, i + 1 )
+  return dirPattern
+}
+
+function getDirPath ( filepath ) {
+  var dirPath = filepath
+  if (dirPath[ dirPath.length - 1 ] !== '/') dirPath += '/'
+  return dirPath
+}
+
+function getDependingWatcherCount ( filepath ) {
+  var counter = 0
+
+  Object.keys( _watchers ).forEach(function ( id ) {
+    var watcher = _watchers[ id ]
+    if ( watcher.filepaths[ filepath ] ) counter++
+  })
+
+  return counter
+}
+
 function poll ( filepath ) {
   if ( !_running ) return undefined
 
-  var w = _watchers[ filepath ]
+  var w = _fileWatchers[ filepath ]
   if ( !w ) return undefined // watcher has been removed
 
   if ( w.type === 'unknown' ) {
@@ -553,7 +614,7 @@ function poll ( filepath ) {
   w._locked = true
 
   fs.stat(filepath, function (err, stats) {
-    w = _watchers[ filepath ]
+    w = _fileWatchers[ filepath ]
     if ( !w ) return undefined // watcher has been removed
 
     w._locked = false
@@ -662,20 +723,25 @@ function schedulePoll ( w, forcedInterval ) {
   }, forcedInterval || interval)
 }
 
+function trigger ( evt, filepath ) {
+}
+
 function watchFile ( filepath, opts ) {
   opts = opts || {}
   filepath = path.resolve( filepath )
 
-  var w = _watchers[ filepath ]
+  var w = _fileWatchers[ filepath ]
 
   if ( w ) { // file already being watched
     console.log( 'file already being watched: ' + filepath )
     w._suppressDirEvents = opts._suppressDirEvents || false
   } else {
-    w = _watchers[ filepath ] = {}
+    w = _fileWatchers[ filepath ] = {}
 
-    w.api = opts.api
-    if ( !w.api ) throw new Error( 'no API set' )
+    // TODO pass in watcher _id's to wathcFile?
+    // TODO internal addId API to wathcFile?
+    // w.api = opts.api
+    // if ( !w.api ) throw new Error( 'no API set' )
 
     w.filepath = filepath
     w.pollInterval = 100
@@ -690,200 +756,184 @@ function watchFile ( filepath, opts ) {
     w.dirFiles = {}
     w.awaitingFilepaths = []
 
-    // listeners
-    w._listeners = []
-
-    w._addEventListener = function (cb) {
-
-      w._listeners.push( cb )
-
-      // create a function to remove the callback listener
-      // that we are adding
-      var removeListener = function () {
-        var i = w._listeners.indexOf( cb )
-
-        if ( i !== -1 ) {
-          // remove the attached callback listener
-          var cb = w._listeners.splice( i, 1 )
-
-          // TODO deativate watcher if last listener is removed
-          if ( w._listeners.length === 1 ) {
-            clearTimeout( w.timeout )
-            // TODO clear FSEvents API?
-            delete _watchers[ filepath ]
-          }
-
-          // return the listener that was removed
-          return cb
-        } else {
-          throw new Error( 'attempted to remove a non-existing (already removed) listener: ' + filepath )
-        }
-      }
-
-      // return the fn to remove the attached callback listener
-      return removeListener
-    }
-
     // DEBUG.WATCHING && console.log('watching [' + w.type + ']: ' + filepath + ' (exists: ' + w.exists + ')')
 
     schedulePoll( w, 5 )
   }
 
+  w.destroy = function () {
+    console.log('fileWatcher destroyed -- [' + w.type + ']: ' + filepath + ' (exists: ' + w.exists + ')')
+    clearTimeout( w.timeout )
+    delete _fileWatchers[ filepath ]
+  }
+
   return w
 } // watchFile ( filepath )
 
-var api = {}
+var userApi = {}
 
-api.watch = function ( filepath ) {
-  var magical = glob.hasMagic( filepath )
-  console.log('magical: ' + ( magical ))
-
-  var shared = {}
-  var watchers = {}
-
-  var api = {}
-
-  var opts = {
-    api: api
-  }
-
-  api.hasMagicalPatterns = false
-  api.patterns = []
-
-  api.trigger = function ( evt, filepath ) {
-  }
-
-  api.add = function ( filepath, _opts ) {
-    _opts = Object.assign({}, opts, opts || {})
-    _opts.api = opts.api
-    var w = watchFile( filepath, _opts )
-
-    if ( !watchers[ w.filepath ] ) {
-      // TODO how to share patterns?
-      var off = w._addEventListener( api.trigger )
-
-      watchers[ w.filepath ] = {
-        watcher: w,
-        unwatch: off
-      }
-    } else {
-      // TODO this is probably OK (eg multiple patterns may attempt to watch
-      // the same file)
-      throw new Error( 'api: file already being watched: ' + w.filepath )
-    }
-
-  }
-
-  api.unwatch = function ( filepath ) {
-    var magical = glob.hasMagic( filepath )
-
-    if ( !magical ) {
-      var w = watchers[ filepath ] || watchers[ path.resolve( filepath ) ]
-      if ( w ) {
-        w.unwatch()
-      }
-      delete watchers[ filepath ]
-      delete watchers[ path.resolve( filepath ) ]
-    } else {
-    }
-  }
-
-  api.close = function () {
-    Object.keys( watchers ).forEach(function ( filepath ) {
-      var w = watchers[ filepath ]
-      w.unwatch()
+function getAllPatterns () {
+  // TODO caching?
+  var _patterns = []
+  Object.keys( _watchers ).forEach( function ( id ) {
+    var watcher = _watchers[ id ]
+    Object.keys( watcher.patterns ).forEach( function ( pattern ) {
+      _patterns.push( pattern )
     })
-    watchers = {}
-  }
+  })
 
-  if ( magical ) {
-    var pattern = path.join( process.cwd(), filepath )
+  return _patterns
+}
 
-    var globStarIndex = pattern.indexOf( '**' )
-    if ( globStarIndex !== -1 ) {
-      _shared.hasGlobStar = true
+var _idCounter = 1
+userApi.watch = function ( filepath /* filepath or glob pattern*/ ) {
+  var id = _idCounter++
+  var watcher = { id: id }
+  _watchers[ id ] = watcher
 
-      var directoriesOnlyPattern = pattern.slice( 0, globStarIndex + 2 ) + '/'
-
-      // watch all directories recursively
-      // (the globstart ** is a special case so we need to
-      // watch directories recursively from where it roots)
-      glob( directoriesOnlyPattern, function ( err, files ) {
-        if ( err ) throw err
-
-        files.forEach(function ( file ) {
-          var filepath = path.resolve( file )
-          console.log('watching dir: ' + filepath)
-          api.add( filepath, { _suppressDirEvents: true } )
-        })
-      })
-    }
-
-    // var starIndex = pattern.lastIndexOf( '*' )
-    var starIndex = pattern.lastIndexOf( '/' )
-    if ( starIndex !== -1 ) {
-      // TODO check?
-      var singleDirectoryPattern = pattern.slice( 0, starIndex + 1 )
-      glob( singleDirectoryPattern, function ( err, files ) {
-        if ( err ) throw err
-        console.log( 'single dirs: ' + files.join(', ') )
-        if (files.length !== 1) throw new Erro( 'unexpected error, expted a single directory, got zero or more' )
-        files.forEach(function ( file ) {
-          var filepath = path.resolve( file )
-          api.add( file )
-        })
-      })
-    }
-
-    api.hasMagicalPatterns = true // basically all patterns are magical?
-    api.patterns.push( pattern )
-
-    // watch all files (recursively) matching the pattern
-    glob( pattern, function ( err, files ) {
-      if ( err ) throw err
-
-      console.log( files )
-
-      files.forEach(function ( file ) {
-        var filepath = path.resolve( file )
-        api.add( file )
-      })
-    })
-
-  } else {
-    api.add( filepath )
-  }
+  // init watcher
+  watcher.filepaths = {}
+  watcher.patterns = {}
 
   var userApi = {}
 
-  userApi.add = function ( filepath, opts ) {
-    api.add( filepath, ops )
-    return userApi
-  }
-
   userApi.unwatch = function ( filepath ) {
+    var magical = glob.hasMagic( filepath )
+
+    if ( magical ) {
+      throw new Error( 'Error: adding patterns not yet implemented' )
+    } else {
+      var filepath = path.resolve( file )
+
+      if ( watcher.filepaths[ filepath ] ) {
+        var w = _fileWatchers[ filepath ]
+
+        if ( !w ) {
+          throw new Error( 'Error: depending watcher found without an active fileWatcher...' )
+        }
+
+        var count = getDependingWatcherCount( filepath )
+        if ( count < 1 ) {
+          throw new Error( 'Error: depending watcher found without an active fileWatcher...' )
+        }
+
+        delete watcher.filepaths[ filepath ]
+
+        if ( count !== ( getDependingWatcherCount( filepath ) - 1 ) ) {
+          throw new Error( 'Error: depending watcher and fileWatcher mismwatch!' )
+        }
+
+        if ( getDependingWatcherCount( filepath ) === 0 ) {
+          // since it's the last watcher depending on the fileWatcher, we can turn off the fileWatcher
+          // (stop polling for changes)
+          w.destroy()
+        }
+      } else {
+        console.log( '(ignoring) trying to unwatch a filepath that is not being watched.' )
+      }
+    }
+
+    var filepaths = Object.keys()
     api.unwatch( filepath )
     return userApi
   }
 
   userApi.close = function () {
-    api.close()
+    throw new Error( 'Error: closing watcher not yet implemented ')
     return userApi
   }
 
-  return userApi
-}
+  userApi.add = function ( filepath, _opts ) {
+    var magical = glob.hasMagic( filepath )
+    magical && console.log('magical: ' + ( magical ))
 
-api.close = function () {
-  _running = false
-  var filepaths = Object.keys( _watchers )
-  filepaths.forEach(function ( filepath ) {
-    unwatch( filepath )
-  })
+    if ( magical ) {
+      // is a pattern for multiple (zero or more) files
+      // var pattern = path.join( process.cwd(), filepath )
+      var pattern = filepath.trim()
+
+      if ( !watcher.patterns[ pattern ] ) {
+        watcher.patterns[ pattern ] = pattern
+
+        var globStarIndex = pattern.indexOf( '**' )
+        if ( globStarIndex !== -1 ) {
+          var directoriesOnlyPattern = pattern.slice( 0, globStarIndex + 2 ) + '/'
+
+          // watch all directories recursively
+          // (the globstart ** is a special case so we need to
+          // watch directories recursively from where it roots)
+          glob( directoriesOnlyPattern, function ( err, files ) {
+            if ( err ) throw err
+
+            files.forEach(function ( file ) {
+              var filepath = path.resolve( file )
+
+              if ( glob.hasMagic( filepath ) ) {
+                console.log( '(ignoring) recursive filepath was magical: ' + filepath )
+              } else {
+                console.log( 'watching dir: ' + filepath )
+                userApi.add( filepath )
+              }
+            })
+          })
+        } // globStar **
+
+        var starIndex = pattern.lastIndexOf( '/' )
+        if ( starIndex !== -1 ) {
+          // TODO check?
+          var singleDirectoryPattern = pattern.slice( 0, starIndex + 1 )
+          glob( singleDirectoryPattern, function ( err, files ) {
+            if ( err ) throw err
+            console.log( 'single dirs: ' + files.join(', ') )
+            if (files.length !== 1) throw new Error( 'unexpected error, expted a single directory, got zero, two, or more' )
+            files.forEach(function ( file ) {
+              var filepath = path.resolve( file )
+              userApi.add( file )
+            })
+          })
+        }
+
+        // watch/init all files (recursively) matching the pattern
+        glob( pattern, function ( err, files ) {
+          if ( err ) throw err
+
+          console.log( files )
+
+          files.forEach(function ( file ) {
+            var filepath = path.resolve( file )
+
+            if ( glob.hasMagic( filepath ) ) {
+              console.log( '(ignoring) recursive filepath was magical: ' + filepath )
+            } else {
+              userApi.add( filepath )
+            }
+          })
+        }) // glob init
+      } else {
+        console.log( '(ignoring) pattern already being watched by this watcher [' + _id + ']: ' + pattern )
+      }
+    } else { //  non-magical aka normal single filepath
+      filepath = path.resolve( filepath )
+
+      var w = watchFile( filepath, _opts )
+      if ( filepath !== w.filepath ) throw new Error( 'Error: filepath mismwatch' )
+
+      if ( !watcher.filepaths[ filepath ] ) {
+        console.log( 'watching filepath: ' + filepath )
+        watcher.filepaths[ filepath ] = filepath
+      } else {
+        console.log( '(ignoring) filepath already being watched by this watcher [' + _id + ']: ' + filepath )
+      }
+    }
+  }
+
+  userApi.add( filepath )
+
+  return userApi
 }
 
 // var w2 = api.watch( path.join( filepath, '..' ) )
 // w2.add( filepath )
 
 // var w = api.watch( 'lib/**/*.js' )
-var w = api.watch( 'lib/foo/bar/*.js' )
+var w = userApi.watch( 'lib/foo/bar/*.js' )
