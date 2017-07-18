@@ -506,14 +506,21 @@ function handleDirectoryStat ( w, stats ) {
 
               Object.keys( _watchers ).forEach(function ( id ) {
                 var watcher = _watchers[ id ]
-                var patterns = watcher.patterns
+
+                var patterns = Object.keys( watcher.patterns )
+                console.log( 'patterns: ' + patterns )
 
                 var shouldAddToWatchList = false
 
                 for (var i = 0; i < patterns.length; i++) {
                   var pattern = patterns[ i ]
-                  var dirPattern = getDirPattern( pattern )
+
+                  var dirPattern = path.resolve( getDirPattern( pattern ) )
+                  console.log( 'dirPattern: ' + dirPattern )
+
                   var dirPath = getDirPath( _filepath )
+                  console.log( 'dirPath: ' + dirPath )
+
                   if ( minimatch( dirPath, dirPattern ) ) {
                     shouldAddToWatchList = true
                     break
@@ -521,7 +528,7 @@ function handleDirectoryStat ( w, stats ) {
                 }
 
                 if ( shouldAddToWatchList ) {
-                  var w = watchFile( _filepath )
+                  var w = watchFile( _filepath, { afterInit: true } )
                   if ( _filepath !== w.filepath ) throw new Error( 'Error: filepath mismwatch' )
                   watcher.filepaths[ _filepath ] = _filepath
 
@@ -549,7 +556,7 @@ function handleDirectoryStat ( w, stats ) {
                 }
 
                 if ( matched ) {
-                  var w = watchFile( _filepath )
+                  var w = watchFile( _filepath, { afterInit: true } )
                   if ( _filepath !== w.filepath ) throw new Error( 'Error: filepath mismwatch' )
                   watcher.filepaths[ _filepath ] = _filepath
 
@@ -581,7 +588,7 @@ function getDirPattern ( pattern ) {
 
 function getDirPath ( filepath ) {
   var dirPath = filepath
-  if (dirPath[ dirPath.length - 1 ] !== '/') dirPath += '/'
+  if (dirPath[ dirPath.length - 1 ] !== path.sep) dirPath += path.sep
   return dirPath
 }
 
@@ -876,21 +883,21 @@ userApi.watch = function ( filepath /* filepath or glob pattern*/ ) {
               }
             })
           })
-        } // globStar **
-
-        var starIndex = pattern.lastIndexOf( '/' )
-        if ( starIndex !== -1 ) {
-          // TODO check?
-          var singleDirectoryPattern = pattern.slice( 0, starIndex + 1 )
-          glob( singleDirectoryPattern, function ( err, files ) {
-            if ( err ) throw err
-            console.log( 'single dirs: ' + files.join(', ') )
-            if (files.length !== 1) throw new Error( 'unexpected error, expted a single directory, got zero, two, or more' )
-            files.forEach(function ( file ) {
-              var filepath = path.resolve( file )
-              userApi.add( file )
+        } else {
+          var starIndex = pattern.lastIndexOf( '/' )
+          if ( starIndex !== -1 ) {
+            // TODO check?
+            var singleDirectoryPattern = pattern.slice( 0, starIndex + 1 )
+            glob( singleDirectoryPattern, function ( err, files ) {
+              if ( err ) throw err
+              console.log( 'single dirs: ' + files.join(', ') )
+              if (files.length !== 1) throw new Error( 'unexpected error, expted a single directory, got zero, two, or more' )
+              files.forEach(function ( file ) {
+                var filepath = path.resolve( file )
+                userApi.add( file )
+              })
             })
-          })
+          }
         }
 
         // watch/init all files (recursively) matching the pattern
@@ -910,7 +917,7 @@ userApi.watch = function ( filepath /* filepath or glob pattern*/ ) {
           })
         }) // glob init
       } else {
-        console.log( '(ignoring) pattern already being watched by this watcher [' + _id + ']: ' + pattern )
+        console.log( '(ignoring) pattern already being watched by this watcher [' + id + ']: ' + pattern )
       }
     } else { //  non-magical aka normal single filepath
       filepath = path.resolve( filepath )
@@ -922,7 +929,7 @@ userApi.watch = function ( filepath /* filepath or glob pattern*/ ) {
         console.log( 'watching filepath: ' + filepath )
         watcher.filepaths[ filepath ] = filepath
       } else {
-        console.log( '(ignoring) filepath already being watched by this watcher [' + _id + ']: ' + filepath )
+        console.log( '(ignoring) filepath already being watched by this watcher [' + id + ']: ' + filepath )
       }
     }
   }
@@ -937,3 +944,8 @@ userApi.watch = function ( filepath /* filepath or glob pattern*/ ) {
 
 // var w = api.watch( 'lib/**/*.js' )
 var w = userApi.watch( 'lib/foo/bar/*.js' )
+// var w = userApi.watch( 'lib/foo/bar/**/*.js' )
+
+setTimeout(function () {
+  w.add( 'lib/foo/bar/**/*.js' )
+}, 1000 * 3)
