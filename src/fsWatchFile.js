@@ -75,7 +75,6 @@ var DEBUG = {
 }
 
 DEBUG = {
-  DIR: true,
   INIT: true,
   FILE_EVENTS: true,
   TEMPERATURE: true
@@ -173,10 +172,6 @@ function awaitDirectory ( filepath ) {
     w.filepath = dirpath
     w.pollInterval = 100
     w.type = 'unknown'
-
-    // disable personal event emitting since this
-    // file is insofar only used as a proxy for other files
-    w._suppressDirEvents = true
 
     w.dirFiles = {}
     w.awaitingFilepaths = [ filepath ]
@@ -305,10 +300,12 @@ function handleFileStat ( w, stats ) {
   // trigger events
   if ( init ) {
     // TODO trigger init and/or addDir event?
-    DEBUG.INIT && DEBUG.FILE_EVENTS && console.log( 'INIT FILE: ' + filepath )
+    // DEBUG.INIT && DEBUG.FILE_EVENTS && console.log( 'INIT FILE: ' + filepath )
+    trigger( 'init', w )
   } else if ( !existedPreviously ) {
     // TODO trigger addDir event?
-    DEBUG.FILE_EVENTS && console.log( 'add: ' + filepath )
+    // DEBUG.FILE_EVENTS && console.log( 'add: ' + filepath )
+    trigger( 'add', w )
   } else if ( existedPreviously ) {
     if ( ALWAYS_COMPARE_FILECONTENT ) {
       // only file content actual byte changes will TODO trigger a change event
@@ -320,7 +317,8 @@ function handleFileStat ( w, stats ) {
       // TODO
       // size or mtime changes is sufficient to TODO trigger a change event (default)
       if ( sizeChanged || mtimeChanged || fileContentHasChanged ) {
-        DEBUG.FILE_EVENTS && console.log( 'change: ' + filepath )
+        // DEBUG.FILE_EVENTS && console.log( 'change: ' + filepath )
+        trigger( 'change', w )
       }
     }
   }
@@ -336,6 +334,8 @@ function handleDirectoryStat ( w, stats ) {
   if ( w.type !== 'directory' ) {
     init = true
   }
+
+  if ( w.afterInit ) init = false
 
   var existedPreviously = ( init === false && w.exists === true )
 
@@ -398,10 +398,12 @@ function handleDirectoryStat ( w, stats ) {
 
   if ( init ) {
     // trigger init and/or addDir event?
-    DEBUG.INIT && DEBUG.DIR_EVENTS && console.log( 'INIT DIR: ' + filepath )
+    // DEBUG.INIT && DEBUG.DIR_EVENTS && console.log( 'INIT DIR: ' + filepath )
+    trigger( 'init', w )
   } else if ( !existedPreviously ) {
     // trigger addDir event?
-    DEBUG.DIR_EVENTS && console.log( 'addDir: ' + filepath )
+    // DEBUG.DIR_EVENTS && console.log( 'addDir: ' + filepath )
+    trigger( 'add', w )
   }
 
   if ( w.awaitingFilepaths.length > 0 ) {
@@ -486,7 +488,7 @@ function handleDirectoryStat ( w, stats ) {
             process.nextTick(function () {
               w._locked = false
               schedulePoll( w )
-              console.log( '      dir unlocked: ' + filepath )
+              DEBUG.DIR && console.log( '      dir unlocked: ' + filepath )
             })
           }
 
@@ -508,7 +510,7 @@ function handleDirectoryStat ( w, stats ) {
                 var watcher = _watchers[ id ]
 
                 var patterns = Object.keys( watcher.patterns )
-                console.log( 'patterns: ' + patterns )
+                DEBUG.DIR && console.log( 'patterns: ' + patterns )
 
                 var shouldAddToWatchList = false
 
@@ -516,10 +518,10 @@ function handleDirectoryStat ( w, stats ) {
                   var pattern = patterns[ i ]
 
                   var dirPattern = path.resolve( getDirPattern( pattern ) )
-                  console.log( 'dirPattern: ' + dirPattern )
+                  DEBUG.DIR && console.log( 'dirPattern: ' + dirPattern )
 
                   var dirPath = getDirPath( _filepath )
-                  console.log( 'dirPath: ' + dirPath )
+                  DEBUG.DIR && console.log( 'dirPath: ' + dirPath )
 
                   if ( minimatch( dirPath, dirPattern ) ) {
                     shouldAddToWatchList = true
@@ -527,12 +529,13 @@ function handleDirectoryStat ( w, stats ) {
                   }
                 }
 
+                DEBUG.DIR && console.log( 'matched: ' + ( shouldAddToWatchList ) )
+
                 if ( shouldAddToWatchList ) {
                   var w = watchFile( _filepath, { afterInit: true } )
                   if ( _filepath !== w.filepath ) throw new Error( 'Error: filepath mismwatch' )
                   watcher.filepaths[ _filepath ] = _filepath
 
-                  console.log( 'matched: ' + _filepath )
                   // TODO trigger addDir?
                 }
               })
@@ -560,10 +563,9 @@ function handleDirectoryStat ( w, stats ) {
                   if ( _filepath !== w.filepath ) throw new Error( 'Error: filepath mismwatch' )
                   watcher.filepaths[ _filepath ] = _filepath
 
-                  console.log( ' + matched: ' + _filepath )
-                  // TODO trigger add?
+                  DEBUG.PATTERN && console.log( ' + matched: ' + _filepath )
                 } else {
-                  console.log( ' - nomatch: ' + _filepath )
+                  DEBUG.PATTERN && console.log( ' - nomatch: ' + _filepath )
                 }
               })
 
@@ -581,7 +583,7 @@ function handleDirectoryStat ( w, stats ) {
 }
 
 function getDirPattern ( pattern ) {
-  var i = pattern.lastIndexOf( '/' )
+  var i = pattern.lastIndexOf( path.sep )
   var dirPattern = pattern.slice( 0, i + 1 )
   return dirPattern
 }
@@ -649,8 +651,8 @@ function poll ( filepath ) {
                   // TODO trigger 'unlink'
                   switch ( w.type ) {
                     case 'directory':
-                      !w._suppressDirEvents && DEBUG.EVENT && console.log('unlinkDir: ' + filepath)
-                      DEBUG.DIR_EVENTS && console.log('unlinkDir: ' + filepath)
+                      // DEBUG.DIR_EVENTS && console.log('unlinkDir: ' + filepath)
+                      trigger( 'unlink', w )
 
                       // TODO
                       // foreach dirFile set w.attempts to MAX_ATTEMPTS
@@ -659,7 +661,8 @@ function poll ( filepath ) {
                       break
 
                     case 'file':
-                      DEBUG.FILE_EVENTS && console.log('unlink: ' + filepath)
+                      // DEBUG.FILE_EVENTS && console.log('unlink: ' + filepath)
+                      trigger( 'unlink', w )
                       break
 
                     default:
@@ -730,7 +733,8 @@ function schedulePoll ( w, forcedInterval ) {
   }, forcedInterval || interval)
 }
 
-function trigger ( evt, filepath ) {
+function trigger ( evt, w ) {
+  DEBUG.FILE_EVENTS && console.log( evt + ' [' + w.type + ']: ' + w.filepath )
 }
 
 function watchFile ( filepath, opts ) {
@@ -740,8 +744,7 @@ function watchFile ( filepath, opts ) {
   var w = _fileWatchers[ filepath ]
 
   if ( w ) { // file already being watched
-    console.log( 'file already being watched: ' + filepath )
-    w._suppressDirEvents = opts._suppressDirEvents || false
+    console.log( 'filepath already being watched: ' + filepath )
   } else {
     w = _fileWatchers[ filepath ] = {}
 
@@ -755,10 +758,6 @@ function watchFile ( filepath, opts ) {
     w.type = 'unknown'
 
     w.afterInit = opts.afterInit || false
-
-    // suppress dir events for directories that are only being watche for internal
-    // library purposes
-    w._suppressDirEvents = opts._suppressDirEvents || false
 
     w.dirFiles = {}
     w.awaitingFilepaths = []
@@ -884,20 +883,9 @@ userApi.watch = function ( filepath /* filepath or glob pattern*/ ) {
             })
           })
         } else {
-          var starIndex = pattern.lastIndexOf( '/' )
-          if ( starIndex !== -1 ) {
-            // TODO check?
-            var singleDirectoryPattern = pattern.slice( 0, starIndex + 1 )
-            glob( singleDirectoryPattern, function ( err, files ) {
-              if ( err ) throw err
-              console.log( 'single dirs: ' + files.join(', ') )
-              if (files.length !== 1) throw new Error( 'unexpected error, expted a single directory, got zero, two, or more' )
-              files.forEach(function ( file ) {
-                var filepath = path.resolve( file )
-                userApi.add( file )
-              })
-            })
-          }
+          var singleDirectoryPattern = getDirPath( path.dirname( pattern ) )
+          var filepath = path.resolve( singleDirectoryPattern )
+          userApi.add( filepath )
         }
 
         // watch/init all files (recursively) matching the pattern
