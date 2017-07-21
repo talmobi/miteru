@@ -935,5 +935,6 @@ var w = userApi.watch( 'lib/foo/bar/*.js' )
 // var w = userApi.watch( 'lib/foo/bar/**/*.js' )
 
 setTimeout(function () {
+  console.log( 'adding globstar pattern' )
   w.add( 'lib/foo/bar/**/*.js' )
-}, 1000 * 3)
+}, 1000 * 10)
