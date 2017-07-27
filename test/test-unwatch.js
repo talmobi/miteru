@@ -2,7 +2,7 @@ var rimraf = require('rimraf')
 var fs = require('fs')
 var path = require('path')
 
-var miteru = require('../index.js')
+var miteru = require('../src/index.js')
 
 function run ( filepath ) {
   var resolved = require.resolve( filepath )
@@ -14,11 +14,10 @@ var filepath = path.join(__dirname, 'tmp', 'unwatch.js')
 
 rimraf.sync( filepath )
 
-var w = miteru.create()
-w.watch( filepath )
+var w = miteru.watch()
 
 w.on('add', function () {
-  console.log('add: ' + run( filepath ))
+  console.log( 'result: ' + run( filepath ) )
   setTimeout(function () {
     w.unwatch( filepath )
   }, 100)
@@ -26,4 +25,5 @@ w.on('add', function () {
 
 setTimeout(function () {
   fs.writeFileSync( filepath, 'module.exports = 999' )
+  w.add( filepath )
 }, 300)

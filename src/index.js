@@ -63,6 +63,7 @@ var filepath = path.resolve('a/b/file')
 var _watchers = {}
 var _fileWatchers = {}
 var _shared = {}
+var _triggers = {}
 
 var DEBUG = {
   WATCHING: true,
@@ -735,6 +736,35 @@ function schedulePoll ( w, forcedInterval ) {
 
 function trigger ( evt, w ) {
   DEBUG.FILE_EVENTS && console.log( evt + ' [' + w.type + ']: ' + w.filepath )
+
+  Object.keys( _watchers ).forEach( function ( id ) {
+    var watcher = _watchers[ id ]
+
+    // Object.keys( watcher.patterns ).forEach( function ( pattern ) {
+    // })
+
+    var patterns = Object.keys( watcher.patterns )
+
+    var matched = false
+
+    if ( watcher.filepaths[ w.filepath ] ) matched = true
+
+    if ( !matched ) {
+      for (var i = 0; i < patterns.length; i++) {
+        var pattern = patterns[ i ]
+        if ( minimatch( _filepath, path.join( process.cwd(), pattern ) ) ) {
+          matched = true
+          break
+        }
+      }
+    }
+
+    if ( matched ) {
+      if ( watcher.callback ) {
+        watcher.callback( w.type, w.filepath )
+      }
+    }
+  })
 }
 
 function watchFile ( filepath, opts ) {
@@ -776,8 +806,6 @@ function watchFile ( filepath, opts ) {
   return w
 } // watchFile ( filepath )
 
-var userApi = {}
-
 function getAllPatterns () {
   // TODO caching?
   var _patterns = []
@@ -792,7 +820,7 @@ function getAllPatterns () {
 }
 
 var _idCounter = 1
-userApi.watch = function ( filepath /* filepath or glob pattern*/ ) {
+function watch ( filepath /* filepath or glob pattern*/ ) {
   var id = _idCounter++
   var watcher = { id: id }
   _watchers[ id ] = watcher
@@ -804,12 +832,13 @@ userApi.watch = function ( filepath /* filepath or glob pattern*/ ) {
   var userApi = {}
 
   userApi.unwatch = function ( filepath ) {
+    // console.log( 'unwatching: ' + filepath )
     var magical = glob.hasMagic( filepath )
 
     if ( magical ) {
       throw new Error( 'Error: adding patterns not yet implemented' )
     } else {
-      var filepath = path.resolve( file )
+      var filepath = path.resolve( filepath )
 
       if ( watcher.filepaths[ filepath ] ) {
         var w = _fileWatchers[ filepath ]
@@ -823,15 +852,25 @@ userApi.watch = function ( filepath /* filepath or glob pattern*/ ) {
           throw new Error( 'Error: depending watcher found without an active fileWatcher...' )
         }
 
-        delete watcher.filepaths[ filepath ]
+        // console.log( 'count:' + getDependingWatcherCount( filepath ) )
+        // console.log( 'watcher.filepaths[ filepath ]: ' + watcher.filepaths[ filepath ])
 
-        if ( count !== ( getDependingWatcherCount( filepath ) - 1 ) ) {
+        delete watcher.filepaths[ filepath ]
+        console.log( 'deleted watcher.filepaths[ filepath ]: ' + filepath )
+
+        // console.log( 'count:' + getDependingWatcherCount( filepath ) )
+        // console.log( 'watcher.filepaths[ filepath ]: ' + watcher.filepaths[ filepath ])
+
+        if ( count !== ( getDependingWatcherCount( filepath ) + 1 ) ) {
+          // console.log( 'a: ' + count )
+          // console.log( 'b: ' + ( getDependingWatcherCount( filepath ) - 1 ) )
           throw new Error( 'Error: depending watcher and fileWatcher mismwatch!' )
         }
 
         if ( getDependingWatcherCount( filepath ) === 0 ) {
           // since it's the last watcher depending on the fileWatcher, we can turn off the fileWatcher
           // (stop polling for changes)
+          console.log( 'fileWatcher without depending watchers -- destroying: ' + filepath )
           w.destroy()
         }
       } else {
@@ -839,8 +878,6 @@ userApi.watch = function ( filepath /* filepath or glob pattern*/ ) {
       }
     }
 
-    var filepaths = Object.keys()
-    api.unwatch( filepath )
     return userApi
   }
 
@@ -922,19 +959,27 @@ userApi.watch = function ( filepath /* filepath or glob pattern*/ ) {
     }
   }
 
-  userApi.add( filepath )
+  userApi.on = function ( evt, callback ) {
+    watcher.callback = callback
+  }
+
+  filepath && userApi.add( filepath )
 
   return userApi
 }
+
+watch.watch = watch
+
+module.exports = watch
 
 // var w2 = api.watch( path.join( filepath, '..' ) )
 // w2.add( filepath )
 
 // var w = api.watch( 'lib/**/*.js' )
-var w = userApi.watch( 'lib/foo/bar/*.js' )
+// var w = userApi.watch( 'lib/foo/bar/*.js' )
 // var w = userApi.watch( 'lib/foo/bar/**/*.js' )
-
-setTimeout(function () {
-  console.log( 'adding globstar pattern' )
-  w.add( 'lib/foo/bar/**/*.js' )
-}, 1000 * 10)
+// 
+// setTimeout(function () {
+//   console.log( 'adding globstar pattern' )
+//   w.add( 'lib/foo/bar/**/*.js' )
+// }, 1000 * 10)

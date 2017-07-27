@@ -6,7 +6,7 @@ var fs = require('fs')
 var path = require('path')
 var childProcess = require('child_process')
 
-var miteru = require('../index.js')
+var miteru = require('../src/index.js')
 
 var test = require('tape')
 
@@ -16,26 +16,40 @@ function run ( filepath ) {
   return require( resolved )
 }
 
-
 var _env = Object.assign({}, process.env)
 function prepare (next) {
   process.env = Object.assign({}, _env)
 
   rimraf(path.join(__dirname, 'tmp'), function (err) {
     if (err) throw err
+
     ncp(path.join(__dirname, 'samples'), path.join(__dirname, 'tmp'), function (err) {
       if (err) throw err
+
       if (run(path.join(__dirname, 'tmp', 'main.js')) !== 42) {
         throw new Error('test preparation failed.')
       }
+
       if (run(path.join(__dirname, 'tmp', 'animal.js')) !== 'giraffe') {
         throw new Error('test preparation failed.')
       }
+
+      console.log( 'preparation successful' )
       next()
     })
   })
 }
 
+function cleanup (done) {
+  rimraf('./test/tmp', function () {
+    console.log('deleted ./test/tmp')
+    mkdirp('./test/tmp', function (err) {
+      if (err) throw err
+      console.log('created empty directory ./test/tmp')
+      done()
+    })
+  })
+}
 function exec (cmd, callback) {
   cmd = cmd.split(/\s+/)
   var spawn = childProcess.spawn(cmd[0], cmd.slice(1))
@@ -57,6 +71,33 @@ function exec (cmd, callback) {
   return spawn
 }
 
+test('exit when no files are being watched (fs.watch mode)', function (t) {
+  t.timeoutAfter(3000)
+  t.plan(1)
+
+  prepare(function () {
+    exec('node ' + path.join(__dirname, 'test-unwatch.js'), function (buffer) {
+      var expected = [
+        'watching filepath: ' + path.join(__dirname, 'tmp', 'unwatch.js'),
+        'HOT file: ' + path.join(__dirname, 'tmp', 'unwatch.js'),
+        'init [file]: ' + path.join(__dirname, 'tmp', 'unwatch.js'),
+        'result: 999',
+        'deleted watcher.filepaths[ filepath ]: ' + path.join(__dirname, 'tmp', 'unwatch.js'),
+        'fileWatcher without depending watchers -- destroying: ' + path.join(__dirname, 'tmp', 'unwatch.js'),
+        'fileWatcher destroyed -- [file]: ' + path.join(__dirname, 'tmp', 'unwatch.js') + ' (exists: true)',
+        ''
+      ].join('\n')
+
+      t.equal(
+        buffer,
+        expected,
+        'exited successfully with expected output'
+      )
+    })
+  }) // prepare
+})
+
+/*
 test('exit when no files are being watched (fs.watch mode)', function (t) {
   t.timeoutAfter(3000)
   t.plan(1)
@@ -203,18 +244,6 @@ test('watch a single file', function (t) {
     }
   })
 })
-
-
-function cleanup (done) {
-  rimraf('./test/tmp', function () {
-    console.log('deleted ./test/tmp')
-    mkdirp('./test/tmp', function (err) {
-      if (err) throw err
-      console.log('created empty directory ./test/tmp')
-      done()
-    })
-  })
-}
 
 test('watch a bunch of files many times', function (t) {
   t.plan(13)
@@ -417,6 +446,8 @@ test('watch a bunch of files many times', function (t) {
     setTimeout(next, 1000)
   })
 })
+
+*/
 
 // not really necessary since ./test/tmp is .gitignored and .npmignored
 test('cleanup test files', function (t) {
