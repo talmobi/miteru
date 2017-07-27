@@ -820,14 +820,21 @@ function getAllPatterns () {
 }
 
 var _idCounter = 1
-function watch ( filepath /* filepath or glob pattern*/ ) {
+function watch ( filepath /* filepath or glob pattern*/, callback ) {
   var id = _idCounter++
   var watcher = { id: id }
   _watchers[ id ] = watcher
 
+  if ( typeof filepath === 'function' ) {
+    callback = filepath
+    filepath = undefined
+  }
+
   // init watcher
   watcher.filepaths = {}
   watcher.patterns = {}
+
+  watcher.callback = callback
 
   var userApi = {}
 
@@ -882,7 +889,7 @@ function watch ( filepath /* filepath or glob pattern*/ ) {
   }
 
   userApi.close = function () {
-    throw new Error( 'Error: closing watcher not yet implemented ')
+    throw new Error( 'Error: closing watcher not yet implemented' )
     return userApi
   }
 
@@ -959,9 +966,9 @@ function watch ( filepath /* filepath or glob pattern*/ ) {
     }
   }
 
-  userApi.on = function ( evt, callback ) {
-    watcher.callback = callback
-  }
+  // userApi.on = function ( evt, callback ) {
+  //   watcher.callback = callback
+  // }
 
   filepath && userApi.add( filepath )
 

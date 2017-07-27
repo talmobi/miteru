@@ -14,14 +14,19 @@ var filepath = path.join(__dirname, 'tmp', 'unwatch.js')
 
 rimraf.sync( filepath )
 
-var w = miteru.watch()
-
-w.on('add', function () {
+var w = miteru.watch(function () {
   console.log( 'result: ' + run( filepath ) )
   setTimeout(function () {
     w.unwatch( filepath )
   }, 100)
 })
+
+// w.on('add', function () {
+//   console.log( 'result: ' + run( filepath ) )
+//   setTimeout(function () {
+//     w.unwatch( filepath )
+//   }, 100)
+// })
 
 setTimeout(function () {
   fs.writeFileSync( filepath, 'module.exports = 999' )
