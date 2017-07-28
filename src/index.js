@@ -58,7 +58,7 @@ var TEMPERATURE = {
   }
 }
 
-var filepath = path.resolve('a/b/file')
+// var filepath = path.resolve('a/b/file')
 
 var _watchers = {}
 var _fileWatchers = {}
@@ -76,6 +76,8 @@ var DEBUG = {
 }
 
 DEBUG = {
+  POLLING: true,
+  AWAITDIR: true,
   INIT: true,
   FILE_EVENTS: true,
   TEMPERATURE: true
@@ -160,6 +162,12 @@ function setFileContent ( w, fileContent ) {
   }
 }
 
+function destroyFileWatcher ( w ) {
+  console.log('fileWatcher destroyed -- [' + w.type + ']: ' + w.filepath + ' (exists: ' + w.exists + ')')
+  clearTimeout( w.timeout )
+  delete _fileWatchers[ w.filepath ]
+}
+
 function awaitDirectory ( filepath ) {
   var dirpath = path.resolve( filepath, '..' )
 
@@ -169,6 +177,15 @@ function awaitDirectory ( filepath ) {
 
   if ( !w ) {
     w = _fileWatchers[ dirpath ] = {}
+
+    // add await dir to depending watchers
+    Object.keys( _watchers ).forEach(function ( id ) {
+      var watcher = _watchers[ id ]
+
+      if ( watcher.filepaths[ filepath ] ) {
+        watcher.filepaths[ dirpath ] = w
+      }
+    })
 
     w.filepath = dirpath
     w.pollInterval = 100
@@ -221,6 +238,15 @@ function awaitDirectory ( filepath ) {
       schedulePoll( w, 5 )
     })
   } else {
+    // add await dir to depending watchers
+    Object.keys( _watchers ).forEach(function ( id ) {
+      var watcher = _watchers[ id ]
+
+      if ( watcher.filepaths[ filepath ] ) {
+        watcher.filepaths[ dirpath ] = w
+      }
+    })
+
     if ( w.type !== 'directory' ) throw new Error( 'awaitDirectory of non-directory' )
     w.awaitingFilepaths.push( filepath ) // filepaths to poll on directory change
   }
@@ -640,7 +666,8 @@ function poll ( filepath ) {
             w.attempts = (w.attempts || 0) + 1 // increment attempts
             if (w.attempts < MAX_ATTEMPTS) {
               w.timeout = setTimeout(function () {
-                poll( filepath )
+                // poll( filepath )
+                poll( w.filepath )
               }, ATTEMPT_INTERVAL) // retry very quickly
             } else { // MAX_ATTEMPTS reached
               if (err.code === 'ENOENT') {
@@ -724,6 +751,8 @@ function poll ( filepath ) {
 } // poll ( filepath )
 
 function schedulePoll ( w, forcedInterval ) {
+  DEBUG.POLLING && console.log( 'POLLING [' + w.type + ']: ' + w.filepath )
+
   clearTimeout( w.timeout )
   var interval = w.pollInterval
 
@@ -749,19 +778,21 @@ function trigger ( evt, w ) {
 
     if ( watcher.filepaths[ w.filepath ] ) matched = true
 
-    if ( !matched ) {
-      for (var i = 0; i < patterns.length; i++) {
-        var pattern = patterns[ i ]
-        if ( minimatch( _filepath, path.join( process.cwd(), pattern ) ) ) {
-          matched = true
-          break
-        }
-      }
-    }
+    // TODO this isn't necessary? all matching patterns should have watcher.filepaths defined
+    // if ( !matched ) {
+    //   for (var i = 0; i < patterns.length; i++) {
+    //     var pattern = patterns[ i ]
+    //     if ( minimatch( _filepath, path.join( process.cwd(), pattern ) ) ) {
+    //       matched = true
+    //       break
+    //     }
+    //   }
+    // }
 
     if ( matched ) {
       if ( watcher.callback ) {
-        watcher.callback( w.type, w.filepath )
+        // console.log( 'type: ' + w.type + ': ' + w.filepath )
+        watcher.callback( evt, w.filepath )
       }
     }
   })
@@ -797,11 +828,11 @@ function watchFile ( filepath, opts ) {
     schedulePoll( w, 5 )
   }
 
-  w.destroy = function () {
-    console.log('fileWatcher destroyed -- [' + w.type + ']: ' + filepath + ' (exists: ' + w.exists + ')')
-    clearTimeout( w.timeout )
-    delete _fileWatchers[ filepath ]
-  }
+  // w.destroy = function () {
+  //   console.log('fileWatcher destroyed -- [' + w.type + ']: ' + filepath + ' (exists: ' + w.exists + ')')
+  //   clearTimeout( w.timeout )
+  //   delete _fileWatchers[ filepath ]
+  // }
 
   return w
 } // watchFile ( filepath )
@@ -859,6 +890,10 @@ function watch ( filepath /* filepath or glob pattern*/, callback ) {
           throw new Error( 'Error: depending watcher found without an active fileWatcher...' )
         }
 
+        if ( count === 1 ) {
+          clearTimeout( w.timeout )
+        }
+
         // console.log( 'count:' + getDependingWatcherCount( filepath ) )
         // console.log( 'watcher.filepaths[ filepath ]: ' + watcher.filepaths[ filepath ])
 
@@ -877,8 +912,9 @@ function watch ( filepath /* filepath or glob pattern*/, callback ) {
         if ( getDependingWatcherCount( filepath ) === 0 ) {
           // since it's the last watcher depending on the fileWatcher, we can turn off the fileWatcher
           // (stop polling for changes)
-          console.log( 'fileWatcher without depending watchers -- destroying: ' + filepath )
-          w.destroy()
+          console.log( 'fileWatcher without depending watchers -- destroying: ' + watcher.id )
+          // w.destroy()
+          destroyFileWatcher( w )
         }
       } else {
         console.log( '(ignoring) trying to unwatch a filepath that is not being watched.' )
@@ -889,7 +925,12 @@ function watch ( filepath /* filepath or glob pattern*/, callback ) {
   }
 
   userApi.close = function () {
-    throw new Error( 'Error: closing watcher not yet implemented' )
+    // throw new Error( 'Error: closing watcher not yet implemented' )
+
+    Object.keys( watcher.filepaths ).forEach(function ( filepath ) {
+      userApi.unwatch( filepath )
+    })
+
     return userApi
   }
 
@@ -984,7 +1025,7 @@ module.exports = watch
 
 // var w = api.watch( 'lib/**/*.js' )
 // var w = userApi.watch( 'lib/foo/bar/*.js' )
-// var w = userApi.watch( 'lib/foo/bar/**/*.js' )
+var w = watch( 'src/lib/foo/bar/**/*.js' )
 // 
 // setTimeout(function () {
 //   console.log( 'adding globstar pattern' )

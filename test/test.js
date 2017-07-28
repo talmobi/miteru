@@ -71,7 +71,9 @@ function exec (cmd, callback) {
   return spawn
 }
 
-test('exit when no files are being watched (fs.watch mode)', function (t) {
+/*
+
+test('exit when no files are being watched', function (t) {
   t.timeoutAfter(3000)
   t.plan(1)
 
@@ -83,7 +85,7 @@ test('exit when no files are being watched (fs.watch mode)', function (t) {
         'init [file]: ' + path.join(__dirname, 'tmp', 'unwatch.js'),
         'result: 999',
         'deleted watcher.filepaths[ filepath ]: ' + path.join(__dirname, 'tmp', 'unwatch.js'),
-        'fileWatcher without depending watchers -- destroying: ' + path.join(__dirname, 'tmp', 'unwatch.js'),
+        'fileWatcher without depending watchers -- destroying: 1',
         'fileWatcher destroyed -- [file]: ' + path.join(__dirname, 'tmp', 'unwatch.js') + ' (exists: true)',
         ''
       ].join('\n')
@@ -97,58 +99,107 @@ test('exit when no files are being watched (fs.watch mode)', function (t) {
   }) // prepare
 })
 
+*/
+
+test('watch a single file', function (t) {
+  t.timeoutAfter(2000)
+  t.plan(2 + 4 - 4)
+
+  prepare(function () {
+    var expected = [
+      ''
+      , 'change: 64'
+      , 'change: 88'
+      , 'unlink'
+      , 'add: 11'
+    ]
+    var buffer = ['']
+
+    var filepath = path.join(__dirname, 'tmp', 'main.js')
+    var w = miteru.watch( filepath, function ( evt, filepath ) {
+      switch ( evt ) {
+        case 'add':
+          buffer.push('add: ' + run( filepath ))
+          break
+
+        case 'unlink':
+          try {
+            fs.readFileSync( filepath )
+            t.fail('unlink event FAILURE (File still exists)')
+          } catch (err) {
+            t.equal(err.code, 'ENOENT', 'unlink event OK (ENOENT)')
+            buffer.push('unlink')
+          }
+          break
+
+        case 'change':
+          buffer.push('change: ' + run( filepath ))
+          break
+      }
+    })
+
+    var actions = [
+      function () {
+        fs.writeFileSync( filepath, 'module.exports = 64' )
+      },
+      function () {
+        fs.writeFileSync( filepath, 'module.exports = 88' )
+      },
+      function () {
+        rimraf.sync( filepath )
+      },
+      function () {
+        fs.writeFileSync( filepath, 'module.exports = 11' )
+      },
+    ]
+
+    setTimeout(next, 200)
+    function next () {
+      var a = actions.shift()
+      if (a) {
+        a()
+        setTimeout(next, 200)
+      } else {
+        setTimeout(finish, 300)
+      }
+    }
+
+    function finish () {
+      t.deepEqual(
+        buffer,
+        expected,
+        'expected output OK'
+      )
+
+      // t.equal(
+      //   miteru.getStatus().files_length,
+      //   1,
+      //   '1 file still being watched as expected'
+      // )
+      // t.equal(
+      //   miteru.getStatus().listeners_length,
+      //   1,
+      //   '1 listener still active as expected'
+      // )
+
+      // w.unwatch( filepath )
+      w.close()
+
+      // t.equal(
+      //   miteru.getStatus().files_length,
+      //   0,
+      //   'no more files being watched'
+      // )
+      // t.equal(
+      //   miteru.getStatus().listeners_length,
+      //   0,
+      //   'no more file event listeners'
+      // )
+    }
+  })
+})
+
 /*
-test('exit when no files are being watched (fs.watch mode)', function (t) {
-  t.timeoutAfter(3000)
-  t.plan(1)
-
-  prepare(function () {
-    process.env.MITERU_DEBUG_FSWATCH = true
-    process.env.MITERU_DEBUG_UNWATCHING = true
-
-    exec('node ' + path.join(__dirname, 'test-unwatch.js'), function (buffer) {
-      var expected = [
-        'add: 999',
-        'fs.watch attached: ' + path.join(__dirname, 'tmp', 'unwatch.js'),
-        'unwatching: ' + path.join(__dirname, 'tmp', 'unwatch.js'),
-        ''
-      ].join('\n')
-
-      t.equal(
-        buffer,
-        expected,
-        'exited successfully with expected output'
-      )
-    })
-  }) // prepare
-})
-
-test('exit when no files are being watched (polling mode)', function (t) {
-  t.timeoutAfter(3000)
-  t.plan(1)
-
-  prepare(function () {
-    process.env.MITERU_FORCE_POLLING = true
-
-    process.env.MITERU_DEBUG_FSWATCH = true
-    process.env.MITERU_DEBUG_UNWATCHING = true
-
-    exec('node ' + path.join(__dirname, 'test-unwatch.js'), function (buffer) {
-      var expected = [
-        'add: 999',
-        'unwatching: ' + path.join(__dirname, 'tmp', 'unwatch.js'),
-        ''
-      ].join('\n')
-
-      t.equal(
-        buffer,
-        expected,
-        'exited successfully with expected output'
-      )
-    })
-  }) // prepare
-})
-
 test('watch a single file', function (t) {
   t.timeoutAfter(1500)
   t.plan(2 + 4)
