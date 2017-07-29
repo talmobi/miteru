@@ -944,7 +944,7 @@ function watch ( filepath /* filepath or glob pattern*/, callback ) {
 
   userApi.add = function ( filepath, _opts ) {
     var magical = glob.hasMagic( filepath )
-    // magical && console.log('magical: ' + ( magical ))
+    magical && console.log( 'magical: ' + ( magical ) + ' : ' + filepath )
 
     if ( magical ) {
       // is a pattern for multiple (zero or more) files
@@ -976,9 +976,28 @@ function watch ( filepath /* filepath or glob pattern*/, callback ) {
             })
           })
         } else {
-          var singleDirectoryPattern = getDirPath( path.dirname( pattern ) )
-          var filepath = path.resolve( singleDirectoryPattern )
-          userApi.add( filepath )
+          // console.log( '=== single dir pattern ===' )
+          var singleDirectoryPattern = getDirPattern( path.dirname( pattern ) )
+
+          glob( singleDirectoryPattern, function ( err, files ) {
+            if ( err ) throw err
+
+            console.log( files )
+
+            files.forEach(function ( file ) {
+              var filepath = path.resolve( file )
+
+              if ( glob.hasMagic( filepath ) ) {
+                console.log( '(ignoring) recursive filepath was magical: ' + filepath )
+              } else {
+                console.log( 'watching dir: ' + filepath )
+                userApi.add( filepath )
+              }
+            })
+          })
+
+          // var filepath = path.resolve( singleDirectoryPattern )
+          // userApi.add( filepath )
         }
 
         // watch/init all files (recursively) matching the pattern
@@ -1001,6 +1020,7 @@ function watch ( filepath /* filepath or glob pattern*/, callback ) {
         console.log( '(ignoring) pattern already being watched by this watcher [' + id + ']: ' + pattern )
       }
     } else { //  non-magical aka normal single filepath
+      // console.log( '=== non-magical pattern ===: ' + filepath )
       filepath = path.resolve( filepath )
 
       var w = watchFile( filepath, _opts )

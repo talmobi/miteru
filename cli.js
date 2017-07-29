@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var miteru = require('./index.js')
+var miteru = require('./src/index.js')
 var glob = require('glob')
 var childProcess = require('child_process')
 
@@ -23,20 +23,22 @@ var usage = [
   ''
 ]
 
-var watcher = miteru.create()
+var watcher = miteru.watch()
 
 argv._.forEach(function ( pattern ) {
-  var files = glob.sync( pattern )
+  watcher.add( pattern )
 
-  if (files.length) {
-    files.forEach(function ( file ) {
-      console.log('watching file: ' + file)
-      watcher.watch( file )
-    })
-  } else {
-    console.log('watching file: ' + pattern)
-    watcher.watch( pattern )
-  }
+  // var files = glob.sync( pattern )
+
+  // if (files.length) {
+  //   files.forEach(function ( file ) {
+  //     console.log('watching file: ' + file)
+  //     watcher.add( file )
+  //   })
+  // } else {
+  //   console.log('watching file: ' + pattern)
+  //   watcher.add( pattern )
+  // }
 })
 
 var _spawns = []
@@ -83,21 +85,42 @@ function exec (cmd) {
   }, 100)
 }
 
-watcher.on('unlink', function (info) {
-  console.log('CLI: unlink at: ' + info.filepath)
-})
-
-watcher.on('add', function (info) {
-  console.log('CLI: add at: ' + info.filepath)
-})
-
-watcher.on('modification', function (info) {
-  var cmd = argv.e
-  console.log('CLI: modification at: ' + info.filepath)
-  if ( cmd ) {
-    exec( cmd )
-  } else {
-    console.log()
-    // console.log('(no command argument ([-e, --execute] <command string>) supplied -- doing nothing')
+watcher.setCallback(function ( evt, filepath ) {
+  switch ( evt ) {
+    case 'unlink':
+      console.log('CLI: unlink at: ' + filepath)
+      break
+    case 'add':
+      console.log('CLI: add at: ' + filepath)
+      break
+    case 'change':
+      var cmd = argv.e
+      console.log('CLI: change at: ' + filepath)
+      if ( cmd ) {
+        exec( cmd )
+      } else {
+        // console.log()
+        console.log('(no command argument ([-e, --execute] <command string>) supplied -- doing nothing')
+      }
+      break
   }
 })
+
+// watcher.on('unlink', function (info) {
+//   console.log('CLI: unlink at: ' + info.filepath)
+// })
+// 
+// watcher.on('add', function (info) {
+//   console.log('CLI: add at: ' + info.filepath)
+// })
+// 
+// watcher.on('modification', function (info) {
+//   var cmd = argv.e
+//   console.log('CLI: modification at: ' + info.filepath)
+//   if ( cmd ) {
+//     exec( cmd )
+//   } else {
+//     console.log()
+//     // console.log('(no command argument ([-e, --execute] <command string>) supplied -- doing nothing')
+//   }
+// })
