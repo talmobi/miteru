@@ -303,7 +303,12 @@ function handleFileStat ( w, stats ) {
 
   // determine if we need to read file contents
   if ( sizeChanged || mtimeChanged || shouldCompareFileContents ) {
-    var fileContent = fs.readFileSync( filepath )
+
+    try {
+      var fileContent = fs.readFileSync( filepath )
+    } catch (err) {
+      return poll( filepath )
+    }
 
     if ( !init && w.fileContent ) {
       fileContentHasChanged = ( !fileContent.equals( w.fileContent ) )
