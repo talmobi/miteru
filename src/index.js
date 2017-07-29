@@ -76,8 +76,8 @@ var DEBUG = {
 }
 
 DEBUG = {
-  POLLING: true,
-  AWAITDIR: true,
+  POLLING: false,
+  AWAITDIR: false,
   INIT: true,
   FILE_EVENTS: true,
   TEMPERATURE: true
@@ -852,7 +852,10 @@ function getAllPatterns () {
 
 var _idCounter = 1
 function watch ( filepath /* filepath or glob pattern*/, callback ) {
-  var id = _idCounter++
+  // console.log( '===  watch: ' + _idCounter + ' ===' )
+
+  var id = _idCounter
+  _idCounter += 1
   var watcher = { id: id }
   _watchers[ id ] = watcher
 
@@ -898,7 +901,7 @@ function watch ( filepath /* filepath or glob pattern*/, callback ) {
         // console.log( 'watcher.filepaths[ filepath ]: ' + watcher.filepaths[ filepath ])
 
         delete watcher.filepaths[ filepath ]
-        console.log( 'deleted watcher.filepaths[ filepath ]: ' + filepath )
+        console.log( 'deleted watcher.filepaths[ ' + filepath + ' ] from watcher.id: ' + watcher.id )
 
         // console.log( 'count:' + getDependingWatcherCount( filepath ) )
         // console.log( 'watcher.filepaths[ filepath ]: ' + watcher.filepaths[ filepath ])
@@ -912,7 +915,7 @@ function watch ( filepath /* filepath or glob pattern*/, callback ) {
         if ( getDependingWatcherCount( filepath ) === 0 ) {
           // since it's the last watcher depending on the fileWatcher, we can turn off the fileWatcher
           // (stop polling for changes)
-          console.log( 'fileWatcher without depending watchers -- destroying: ' + watcher.id )
+          console.log( 'fileWatcher without depending watchers -- destroying: ' + filepath )
           // w.destroy()
           destroyFileWatcher( w )
         }
@@ -936,7 +939,7 @@ function watch ( filepath /* filepath or glob pattern*/, callback ) {
 
   userApi.add = function ( filepath, _opts ) {
     var magical = glob.hasMagic( filepath )
-    magical && console.log('magical: ' + ( magical ))
+    // magical && console.log('magical: ' + ( magical ))
 
     if ( magical ) {
       // is a pattern for multiple (zero or more) files
@@ -977,7 +980,7 @@ function watch ( filepath /* filepath or glob pattern*/, callback ) {
         glob( pattern, function ( err, files ) {
           if ( err ) throw err
 
-          console.log( files )
+          // console.log( files )
 
           files.forEach(function ( file ) {
             var filepath = path.resolve( file )
@@ -1011,12 +1014,32 @@ function watch ( filepath /* filepath or glob pattern*/, callback ) {
   //   watcher.callback = callback
   // }
 
+  userApi.setCallback = function ( callback ) {
+    watcher.callback = callback
+  }
+
   filepath && userApi.add( filepath )
 
   return userApi
 }
 
 watch.watch = watch
+
+function getStatus () {
+  var ll = 0
+
+  Object.keys( _fileWatchers ).forEach(function ( filepath ) {
+    ll += getDependingWatcherCount( filepath )
+  })
+
+  return {
+    listeners_length: ll,
+    files_length: Object.keys( _fileWatchers ).length,
+    files: Object.keys( _fileWatchers )
+  }
+}
+
+watch.getStatus = getStatus
 
 module.exports = watch
 
@@ -1025,7 +1048,7 @@ module.exports = watch
 
 // var w = api.watch( 'lib/**/*.js' )
 // var w = userApi.watch( 'lib/foo/bar/*.js' )
-var w = watch( 'src/lib/foo/bar/**/*.js' )
+// var w = watch( 'src/lib/foo/bar/**/*.js' )
 // 
 // setTimeout(function () {
 //   console.log( 'adding globstar pattern' )
