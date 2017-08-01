@@ -34,11 +34,18 @@ function ignoreFilter (file, index, array) {
 }
 
 var MAX_ATTEMPTS = 10
-var ATTEMPT_INTERVAL = 10
+var ATTEMPT_INTERVAL = 10 // milliseconds
 
+// some file systems round up to the nearest full second (i.e OSX)
+// for file mtime, atime, ctime etc -- so in order to account for
+// this edge case ( very edgy ) we need to diff the file contents
+// to determine if the file has been changed
 var EDGE_CASE_INTERVAL = 1000 // milliseconds
+
+// diffing HUGE files hurts the soul so we cap it at a reasonable (TM) size..
 var EDGE_CASE_MAX_SIZE = (1024 * 1024 * 15) // 15mb
 
+// polling interval intensities based on delta time ( time since last change )
 var TEMPERATURE = {
   HOT: {
     AGE: (1000 * 60 * 5), // 5 min
@@ -58,12 +65,10 @@ var TEMPERATURE = {
   }
 }
 
-// var filepath = path.resolve('a/b/file')
-
+// user created watchers TODO
+// (buckets of files to watch and a)
 var _watchers = {}
-var _fileWatchers = {}
-var _shared = {}
-var _triggers = {}
+var _fileWatchers = {} // internal shared/global files that are being watched across all watch instances
 
 var DEBUG = {
   WATCHING: true,
@@ -85,6 +90,7 @@ DEBUG = {
 
 var _running = true
 
+// cleanup
 process.on('exit', function () {
   _running = false
   var filepaths = Object.keys( _fileWatchers )
@@ -178,7 +184,7 @@ function awaitDirectory ( filepath ) {
   if ( !w ) {
     w = _fileWatchers[ dirpath ] = {}
 
-    // add await dir to depending watchers
+    // add await dir to the depending watchers list of filepaths
     Object.keys( _watchers ).forEach(function ( id ) {
       var watcher = _watchers[ id ]
 
@@ -519,8 +525,8 @@ function handleDirectoryStat ( w, stats ) {
           if (statsFinished === statsInProgress ) {
             process.nextTick(function () {
               w._locked = false
-              schedulePoll( w )
               DEBUG.DIR && console.log( '      dir unlocked: ' + filepath )
+              schedulePoll( w )
             })
           }
 
@@ -654,28 +660,28 @@ function poll ( filepath ) {
 
   w._locked = true
 
-  fs.stat(filepath, function (err, stats) {
+  fs.stat( filepath, function ( err, stats ) {
     w = _fileWatchers[ filepath ]
     if ( !w ) return undefined // watcher has been removed
 
     w._locked = false
 
-    if (err) {
-      switch (err.code) {
+    if ( err ) {
+      switch ( err.code ) {
         case 'EBUSY':
         case 'ENOTEMPTY':
         case 'EPERM':
         case 'EMFILE':
         case 'ENOENT':
-          if (w.exists || w.forceAttempts) {
-            w.attempts = (w.attempts || 0) + 1 // increment attempts
-            if (w.attempts < MAX_ATTEMPTS) {
-              w.timeout = setTimeout(function () {
+          if ( w.exists || w.forceAttempts ) {
+            w.attempts = ( w.attempts || 0 ) + 1 // increment attempts
+            if ( w.attempts < MAX_ATTEMPTS ) {
+              w.timeout = setTimeout( function () {
                 // poll( filepath )
                 poll( w.filepath )
-              }, ATTEMPT_INTERVAL) // retry very quickly
+              }, ATTEMPT_INTERVAL ) // retry very quickly
             } else { // MAX_ATTEMPTS reached
-              if (err.code === 'ENOENT') {
+              if ( err.code === 'ENOENT' ) {
                 var existedPreviously = ( w.exists === true )
                 w.exists = false
                 w.forceAttempts = false
@@ -781,6 +787,7 @@ function trigger ( evt, w ) {
 
     var matched = false
 
+    // check if this watcher is watching the filepath
     if ( watcher.filepaths[ w.filepath ] ) matched = true
 
     // TODO this isn't necessary? all matching patterns should have watcher.filepaths defined
