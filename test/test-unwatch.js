@@ -38,14 +38,16 @@ process.on( 'exit', function () {
 })
 
 setTimeout( function () {
+  console.log( 'watched files: ' + w.getWatched().join( ',' ) )
   w.unwatch( filepath )
 
   setTimeout( function () {
     fs.writeFileSync( filepath, 'module.exports = 888' )
 
     setTimeout( function () {
+      console.log( 'closing watcher instance' )
       w.close()
-    }, 1000 )
+    }, 500 )
 
   }, 500 )
 

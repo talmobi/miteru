@@ -55,66 +55,6 @@ function verifyFileCleaning ( files ) {
   return files.length === counter
 }
 
-test( 'exit process after watcher is closed', function ( t ) {
-  t.timeoutAfter( 5000 )
-
-  prepareTestFiles(function () {
-    var filepath = path.join( __dirname, 'tmp', 'unwatch.js' )
-
-    var expected = [
-      ''
-      , 'ENOENT'
-      , 'module.exports = 777'
-      , 'init: ' + filepath
-      , 'result: 777'
-      , 'exiting: 999'
-    ]
-
-    var buffer = ['']
-
-    t.ok(
-      verifyFileCleaning(
-        [
-          filepath
-        ]
-      ),
-      'test pre-cleaned properly'
-    )
-
-    process.env.MITERU_LOGLEVEL = 'silent'
-
-    var spawn = childProcess.spawn('node', [
-      path.join( __dirname, 'test-unwatch.js' )
-    ])
-
-    spawn.stdout.on( 'data', function ( data ) {
-      buffer.push( data.toString( 'utf8' ) )
-    })
-
-    spawn.stderr.on( 'data', function ( data ) {
-      buffer.push( data.toString( 'utf8' ) )
-    })
-
-    spawn.on( 'exit', function ( code ) {
-      finish()
-    })
-
-    function finish () {
-      t.deepEqual(
-        buffer.map(function ( line ) {
-          return line.trim()
-        }),
-        expected,
-        'expected output OK'
-      )
-
-      setTimeout( function () {
-        t.end()
-      }, 100 )
-    }
-  })
-})
-
 test( 'watch a single file', function ( t ) {
   t.timeoutAfter( 2500 )
 
@@ -231,10 +171,10 @@ test( 'watch a single file', function ( t ) {
 })
 
 test( 'watch a non-existing file', function ( t ) {
-  t.timeoutAfter( 7000 )
+  t.timeoutAfter( 2500 )
 
   prepareTestFiles(function () {
-    var filepath = path.join( __dirname, 'tmp', 'main.js' )
+    var filepath = path.join( __dirname, 'tmp', 'blabla.js' )
 
     var expected = [
       ''
@@ -300,13 +240,13 @@ test( 'watch a non-existing file', function ( t ) {
       },
     ]
 
-    setTimeout( next, 1000 )
+    setTimeout( next, 200 )
 
     function next () {
       var a = actions.shift()
       if ( a ) {
         a()
-        setTimeout( next, 1000 )
+        setTimeout( next, 200 )
       } else {
         finish()
       }
@@ -471,6 +411,68 @@ test( 'watch a new file after init', function ( t ) {
       )
 
       w.close()
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  })
+})
+
+test( 'exit process after watcher is closed', function ( t ) {
+  t.timeoutAfter( 5000 )
+
+  prepareTestFiles(function () {
+    var filepath = path.join( __dirname, 'tmp', 'unwatch.js' )
+
+    var expected = [
+      ''
+      , 'ENOENT'
+      , 'module.exports = 777'
+      , 'init: ' + filepath
+      , 'result: 777'
+      , 'watched files: ' + filepath
+      , 'closing watcher instance'
+      , 'exiting: 999'
+    ]
+
+    var buffer = ['']
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    process.env.MITERU_LOGLEVEL = 'silent'
+
+    var spawn = childProcess.spawn('node', [
+      path.join( __dirname, 'test-unwatch.js' )
+    ])
+
+    spawn.stdout.on( 'data', function ( data ) {
+      buffer.push( data.toString( 'utf8' ) )
+    })
+
+    spawn.stderr.on( 'data', function ( data ) {
+      buffer.push( data.toString( 'utf8' ) )
+    })
+
+    spawn.on( 'exit', function ( code ) {
+      finish()
+    })
+
+    function finish () {
+      t.deepEqual(
+        buffer.map(function ( line ) {
+          return line.trim()
+        }),
+        expected,
+        'expected output OK'
+      )
 
       setTimeout( function () {
         t.end()

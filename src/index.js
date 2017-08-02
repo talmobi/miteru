@@ -252,7 +252,7 @@ function createFileWatcher ( watcher, filepath ) {
 
   fw.close = function () {
     clearTimeout( fw.timeout )
-    fw._closed = true
+    fw.closed = true
   }
 
   schedulePoll( fw )
@@ -260,24 +260,40 @@ function createFileWatcher ( watcher, filepath ) {
   return fw
 }
 
-function pollFile ( fw ) {
-  if ( fw._closed ) throw new Error( 'fw is closed' )
-  if ( fw._locked ) throw new Error( 'fw is locked' )
+function unlockFile ( fw ) {
+  if ( fw.locked !== true ) throw new Error( 'fw was not locked when attempting to unlock' )
+  fw.locked = false
+}
 
-  fw._locked = true
+function schedulePoll ( fw, forcedInterval ) {
+  if ( fw.locked ) throw new Error( 'fw locked' )
+
+  var interval = ( forcedInterval || fw.pollInterval || 33 )
+
+  if ( fw.timeout !== undefined ) throw new Error( 'fw.timeout already in progress' )
+
+  clearTimeout( fw.timeout )
+  fw.timeout = setTimeout(function () {
+    fw.timeout = undefined
+    pollFile( fw )
+  }, forcedInterval || fw.pollInterval || 33 )
+}
+
+function pollFile ( fw ) {
+  if ( fw.closed ) throw new Error( 'fw is closed' )
+
+  if ( fw.locked ) throw new Error( 'fw is locked' )
+  fw.locked = true
   fs.stat( fw.filepath, function ( err, stats ) {
-    if ( fw._closed ) {
+    if ( fw.closed ) {
       DEBUG.LOG && log( 'fw has been closed' )
       return undefined
     }
-    if ( !fw._locked ) throw new Error( 'fw was not locked..' )
 
-    process.nextTick(function () {
-      if ( !fw._locked ) throw new Error( 'fw was not locked..' )
-      fw._locked = false
-    })
+    if ( fw.locked !== true ) throw new Error( 'fw was not locked prior to fs.stat' )
 
     if ( !fw.watcher.files[ fw.filepath ] ) {
+      // TODO
       // fileWatcher has been removed
       var msg = 'fileWatcher has been removed'
       throw new Error( msg )
@@ -293,7 +309,10 @@ function pollFile ( fw ) {
 
           if ( existedPreviously || fw.initFlagged ) {
             // file existed previously, assume that it should still
-            // exist and attempt to fs.stat it again
+            // exist and attempt to fs.stat it again.
+            // or if the file was added on init -- assume that it should
+            // exist (or will exist within a few milliseconds [*])
+            // [*] within (MAX_ATTEMPTS * ATTEMPT_INTERVAL) milliseconds
             fw.attempts = ( fw.attempts || 0 ) + 1 // increment attempts
 
             if ( fw.attempts > MAX_ATTEMPTS ) { // MAX_ATTEMPTS exceeded
@@ -310,7 +329,7 @@ function pollFile ( fw ) {
               }
 
               // in any case the init phase has ended
-              // for this file did it exist or not
+              // for this file did it exist or not, previously or otherwise
               fw.initFlagged = false
 
               // TODO trigger 'unlink' event
@@ -318,9 +337,11 @@ function pollFile ( fw ) {
               trigger( fw, 'unlink' )
 
               // schedule next poll
+              unlockFile( fw )
               schedulePoll( fw )
             } else {
               // schedule next poll faster than usual
+              unlockFile( fw )
               schedulePoll( fw, ATTEMPT_INTERVAL)
             }
           } else {
@@ -330,6 +351,7 @@ function pollFile ( fw ) {
 
             // file didn't exist previously so it's safe to assume
             // it still doesn't exist
+            unlockFile( fw )
             schedulePoll( fw )
           }
           break
@@ -425,6 +447,7 @@ function pollFile ( fw ) {
       updatePollingInterval( fw )
 
       // schedule next poll
+      unlockFile( fw )
       schedulePoll( fw )
 
       // trigger events
@@ -449,23 +472,10 @@ function pollFile ( fw ) {
 
 function trigger ( fw, evt ) {
   if ( typeof fw.watcher.callback !== 'function' ) {
-    throw new Errro( 'no callback function provided for watcher instance' )
+    throw new Error( 'no callback function provided for watcher instance' )
   }
 
   fw.watcher.callback( evt, fw.filepath )
-}
-
-function schedulePoll ( fw, forcedInterval ) {
-  DEBUG.SCHEDULE_POLL && log( ' === scheduling poll === ')
-
-  if ( fw._closed ) throw new Error( 'fw is closed' )
-  // if ( !fw._locked ) throw new Error( 'fw was not locked..' )
-
-  clearTimeout( fw.timeout )
-  fw.timeout = setTimeout(function () {
-    pollFile( fw )
-  }, forcedInterval || 33 )
-  // }, forcedInterval || fw.pollInterval || 300 )
 }
 
 function setFileContent ( fw, content ) {
