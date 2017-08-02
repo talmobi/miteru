@@ -82,10 +82,13 @@ switch ( ( process.env.MITERU_LOGLEVEL || '' ).toLowerCase() ) {
   case 'evts':
   case 'event':
   case 'events':
-  default:
     DEBUG = {
       EVT: true
     }
+    break
+
+  default:
+    DEBUG = {}
     break
 }
 
