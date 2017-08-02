@@ -41,7 +41,58 @@ var TEMPERATURE = {
   }
 }
 
-var DEBUG = {}
+var DEBUG = {
+  FILE: true,
+  LOG: true,
+  EVT: true,
+}
+
+DEBUG = {
+  EVT: true
+}
+
+switch ( ( process.env.MITERU_LOGLEVEL || '' ).toLowerCase() ) {
+  case 'silent':
+  case 'silence':
+  case 'quiet':
+  case 'nolog':
+  case 'nologging':
+    DEBUG = {}
+    break
+
+  case 'temp':
+  case 'temperature':
+    var DEBUG = {
+      TEMPERATURE: true
+    }
+    break
+
+  case 'full':
+  case 'all':
+    var DEBUG = {
+      TEMPERATURE: true,
+      ENOENT: true,
+      FILE: true,
+      LOG: true,
+      EVT: true
+    }
+    break
+
+  case 'evt':
+  case 'evts':
+  case 'event':
+  case 'events':
+  default:
+    DEBUG = {
+      EVT: true
+    }
+    break
+}
+
+
+function log ( msg ) {
+  console.log( msg )
+}
 
 // user created watchers TODO
 // (buckets of files to watch and a)
@@ -79,8 +130,6 @@ api.watch = function watch ( file, callback ) {
   })
 
   watcher.add = function ( file ) {
-    console.log( 'adding: ' + file )
-
     var isPattern = glob.hasMagic( file )
 
     if ( isPattern ) {
@@ -135,6 +184,10 @@ api.watch = function watch ( file, callback ) {
       fw.close()
     })
 
+    // JavaScript functions return 'undefined' by default -- but
+    // explicitly writing it here as it is intended
+    // behaviour because after a watcher is closed it stays closed.
+    // And attempting to chain it is, and is supposed to be, an error.
     return undefined // ( default behavour ) ( no chaining )
   }
 
@@ -159,7 +212,7 @@ function watchFile ( watcher, file, initFlagged ) {
 
   if ( fw ) {
     // already watching
-    console.log( '(ignored) file already being watched' )
+    DEBUG.LOG && log( '(ignored) file already being watched' )
   } else {
     // add new file watcher
     var fw = createFileWatcher( watcher, filepath )
@@ -211,7 +264,8 @@ function pollFile ( fw ) {
   fw._locked = true
   fs.stat( fw.filepath, function ( err, stats ) {
     if ( fw._closed ) {
-      return console.log( 'fw has been closed' )
+      DEBUG.LOG && log( 'fw has been closed' )
+      return undefined
     }
     if ( !fw._locked ) throw new Error( 'fw was not locked..' )
 
@@ -230,21 +284,34 @@ function pollFile ( fw ) {
     if ( err ) {
       switch ( err.code ) {
         case 'ENOENT':
-          console.log( ' === POLL ENOENT === ' )
+          DEBUG.ENOENT && log( ' === POLL ENOENT === ' )
 
           var existedPreviously = ( fw.exists === true )
 
-          if ( existedPreviously ) {
+          if ( existedPreviously || fw.initFlagged ) {
             // file existed previously, assume that it should still
             // exist and attempt to fs.stat it again
-            fw.attempts = ( fw.attempts || 0 )  + 1 // increment attempts
+            fw.attempts = ( fw.attempts || 0 ) + 1 // increment attempts
 
             if ( fw.attempts > MAX_ATTEMPTS ) { // MAX_ATTEMPTS exceeded
               // after a number of failed attempts
               // consider the file non-existent
               fw.exists = false
+
+              if ( fw.initFlagged ) {
+                // TODO -- throw error since file on init didn't exist?
+                // perhaps user expects it to exist since it was added on init?
+                // --
+                // in any case the init phase has ended
+                // for this file did it exist or not
+              }
+
+              // in any case the init phase has ended
+              // for this file did it exist or not
+              fw.initFlagged = false
+
               // TODO trigger 'unlink' event
-              console.log( 'unlink: ' + fw.filepath )
+              DEBUG.EVT && log( 'unlink: ' + fw.filepath )
               trigger( fw, 'unlink' )
 
               // schedule next poll
@@ -254,6 +321,10 @@ function pollFile ( fw ) {
               schedulePoll( fw, ATTEMPT_INTERVAL)
             }
           } else {
+            // in any case the init phase has ended
+            // for this file did it exist or not
+            fw.initFlagged = false
+
             // file didn't exist previously so it's safe to assume
             // it still doesn't exist
             schedulePoll( fw )
@@ -306,7 +377,7 @@ function pollFile ( fw ) {
       var fileContentHasChanged = undefined
 
       if ( shouldCompareFileContents ) {
-        DEBUG.FILE && console.log( 'FILE WILL COMPARE CONTENT   : ' + fw.filepath )
+        DEBUG.FILE && log( 'FILE WILL COMPARE CONTENT   : ' + fw.filepath )
       }
 
       var fileContent
@@ -356,16 +427,16 @@ function pollFile ( fw ) {
       // trigger events
       if ( existedPreviously ) {
         if ( sizeChanged || mtimeChanged || fileContentHasChanged ) {
-          console.log( 'change: ' + fw.filepath )
+          DEBUG.EVT && log( 'change: ' + fw.filepath )
           trigger( fw, 'change' )
         }
       } else {
-        if ( fw.initFlagged ) {
+        if ( fw.initFlagged === true ) {
           fw.initFlagged = false
-          console.log( 'init: ' + fw.filepath )
+          DEBUG.EVT && log( 'init: ' + fw.filepath )
           trigger( fw, 'init' )
         } else {
-          console.log( 'add: ' + fw.filepath )
+          DEBUG.EVT && log( 'add: ' + fw.filepath )
           trigger( fw, 'add' )
         }
       }
@@ -382,7 +453,7 @@ function trigger ( fw, evt ) {
 }
 
 function schedulePoll ( fw, forcedInterval ) {
-  console.log( ' === scheduling poll === ')
+  DEBUG.SCHEDULE_POLL && log( ' === scheduling poll === ')
 
   if ( fw._closed ) throw new Error( 'fw is closed' )
   // if ( !fw._locked ) throw new Error( 'fw was not locked..' )
@@ -426,22 +497,22 @@ function updatePollingInterval ( fw ) {
   if ( fw ) {
     if ( delta < TEMPERATURE.HOT.AGE ) {
       if ( fw.pollInterval !== TEMPERATURE.HOT.INTERVAL ) {
-        DEBUG.TEMPERATURE && console.log( 'HOT file: ' + filepath )
+        DEBUG.TEMPERATURE && log( 'HOT file: ' + filepath )
         fw.pollInterval = TEMPERATURE.HOT.INTERVAL
       }
     } else if ( delta < TEMPERATURE.SEMI_HOT.AGE ) {
       if ( fw.pollInterval !== TEMPERATURE.SEMI_HOT.INTERVAL ) {
-        DEBUG.TEMPERATURE && console.log( 'SEMI_HOT file: ' + filepath )
+        DEBUG.TEMPERATURE && log( 'SEMI_HOT file: ' + filepath )
         fw.pollInterval = TEMPERATURE.SEMI_HOT.INTERVAL
       }
     } else if ( delta < TEMPERATURE.WARM.AGE ) {
       if ( fw.pollInterval !== TEMPERATURE.WARM.INTERVAL ) {
-        DEBUG.TEMPERATURE && console.log( 'WARM file: ' + filepath )
+        DEBUG.TEMPERATURE && log( 'WARM file: ' + filepath )
         fw.pollInterval = TEMPERATURE.WARM.INTERVAL
       }
     } else if ( delta < TEMPERATURE.COLD.AGE ) {
       if ( fw.pollInterval !== TEMPERATURE.COLD.INTERVAL ) {
-        DEBUG.TEMPERATURE && console.log( 'COLD file: ' + filepath )
+        DEBUG.TEMPERATURE && log( 'COLD file: ' + filepath )
         fw.pollInterval = TEMPERATURE.COLD.INTERVAL
       }
     }

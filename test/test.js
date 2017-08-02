@@ -5,6 +5,8 @@ var ncp = require('ncp').ncp
 var fs = require('fs')
 var path = require('path')
 
+var childProcess = require('child_process')
+
 var miteru = require('../src/index.js')
 
 var test = require('tape')
@@ -53,6 +55,66 @@ function verifyFileCleaning ( files ) {
   return files.length === counter
 }
 
+test( 'exit process after watcher is closed', function ( t ) {
+  t.timeoutAfter( 5000 )
+
+  prepareTestFiles(function () {
+    var filepath = path.join( __dirname, 'tmp', 'unwatch.js' )
+
+    var expected = [
+      ''
+      , 'ENOENT'
+      , 'module.exports = 777'
+      , 'init: ' + filepath
+      , 'result: 777'
+      , 'exiting: 999'
+    ]
+
+    var buffer = ['']
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    process.env.MITERU_LOGLEVEL = 'silent'
+
+    var spawn = childProcess.spawn('node', [
+      path.join( __dirname, 'test-unwatch.js' )
+    ])
+
+    spawn.stdout.on( 'data', function ( data ) {
+      buffer.push( data.toString( 'utf8' ) )
+    })
+
+    spawn.stderr.on( 'data', function ( data ) {
+      buffer.push( data.toString( 'utf8' ) )
+    })
+
+    spawn.on( 'exit', function ( code ) {
+      finish()
+    })
+
+    function finish () {
+      t.deepEqual(
+        buffer.map(function ( line ) {
+          return line.trim()
+        }),
+        expected,
+        'expected output OK'
+      )
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  })
+})
+
 test( 'watch a single file', function ( t ) {
   t.timeoutAfter( 2500 )
 
@@ -63,8 +125,10 @@ test( 'watch a single file', function ( t ) {
       ''
       , 'init: abra'
       , 'change: 88'
-      , 'unlink'
+      , 'unlink: ' + filepath
       , 'add: 11'
+      , 'change: kadabra'
+      , 'change: allakhazam'
     ]
 
     var buffer = ['']
@@ -72,7 +136,7 @@ test( 'watch a single file', function ( t ) {
     t.ok(
       verifyFileCleaning(
         [
-          filepath,
+          filepath
         ]
       ),
       'test pre-cleaned properly'
@@ -96,7 +160,7 @@ test( 'watch a single file', function ( t ) {
             t.fail( 'unlink event FAILURE (File still exists)' )
           } catch ( err ) {
             t.equal( err.code, 'ENOENT', 'unlink event OK (ENOENT)' )
-            buffer.push( 'unlink' )
+            buffer.push( 'unlink: ' + filepath )
           }
           break
 
@@ -116,15 +180,133 @@ test( 'watch a single file', function ( t ) {
       function () {
         fs.writeFileSync( filepath, 'module.exports = 11' )
       },
+      function () {
+        fs.writeFileSync( filepath, 'module.exports = "kadabra"' )
+      },
+      function () {
+        fs.writeFileSync( filepath, 'module.exports = "allakhazam"' )
+      },
     ]
 
-    setTimeout( next, 200 )
+    setTimeout( next, 300 )
 
     function next () {
       var a = actions.shift()
       if ( a ) {
         a()
-        setTimeout( next, 200 )
+        setTimeout( next, 300 )
+      } else {
+        finish()
+      }
+    }
+
+    function finish () {
+      t.deepEqual(
+        buffer,
+        expected,
+        'expected output OK'
+      )
+
+      t.deepEqual(
+        w.getWatched(),
+        [ filepath ],
+        'expected files (1) still being watched'
+      )
+
+      w.unwatch( filepath )
+
+      t.deepEqual(
+        w.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
+      w.close()
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  })
+})
+
+test( 'watch a non-existing file', function ( t ) {
+  t.timeoutAfter( 7000 )
+
+  prepareTestFiles(function () {
+    var filepath = path.join( __dirname, 'tmp', 'main.js' )
+
+    var expected = [
+      ''
+      , 'unlink: ' + filepath
+      , 'add: 88'
+      , 'unlink: ' + filepath
+      , 'add: 11'
+    ]
+
+    var buffer = ['']
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath,
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    // fs.writeFileSync( filepath, 'module.exports = "abra"' )
+
+    var w = miteru.watch( filepath, function ( evt, filepath ) {
+      switch ( evt ) {
+        case 'init':
+          buffer.push( 'init: ' + run( filepath ) )
+          break
+
+        case 'add':
+          buffer.push( 'add: ' + run( filepath ) )
+          break
+
+        case 'unlink':
+          try {
+            fs.readFileSync( filepath )
+            t.fail( 'unlink event FAILURE (File still exists)' )
+          } catch ( err ) {
+            t.equal( err.code, 'ENOENT', 'unlink event OK (ENOENT)' )
+            buffer.push( 'unlink: ' + filepath )
+          }
+          break
+
+        case 'change':
+          buffer.push( 'change: ' + run( filepath ) )
+          break
+
+        default:
+          t.fail( 'unrecognized watch evt: [ ' + evt + ' ]' )
+          buffer.push( evt + ': ' + run( filepath ) )
+          break
+      }
+    })
+
+    var actions = [
+      function () {
+        fs.writeFileSync( filepath, 'module.exports = 88' )
+      },
+      function () {
+        rimraf.sync( filepath )
+      },
+      function () {
+        fs.writeFileSync( filepath, 'module.exports = 11' )
+      },
+    ]
+
+    setTimeout( next, 1000 )
+
+    function next () {
+      var a = actions.shift()
+      if ( a ) {
+        a()
+        setTimeout( next, 1000 )
       } else {
         finish()
       }
@@ -173,7 +355,7 @@ test( 'watch a new file after init', function ( t ) {
       ''
       , 'init: abra'
       , 'change: 88'
-      , 'unlink'
+      , 'unlink: ' + filepath
       , 'add: 11'
       , 'add: ' + timestamp // should be of evt type add and not init
       , 'add: 22'
@@ -209,7 +391,7 @@ test( 'watch a new file after init', function ( t ) {
             t.fail( 'unlink event FAILURE (File still exists)' )
           } catch ( err ) {
             t.equal( err.code, 'ENOENT', 'unlink event OK (ENOENT)' )
-            buffer.push( 'unlink' )
+            buffer.push( 'unlink: ' + filepath )
           }
           break
 
