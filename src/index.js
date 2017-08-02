@@ -95,6 +95,8 @@ api.watch = function watch ( file, callback ) {
       // is a single file path
       watchFile( watcher, file, initFlagged )
     }
+
+    return watcher // chaining
   }
 
   watcher.unwatch = function ( file ) {
@@ -116,10 +118,15 @@ api.watch = function watch ( file, callback ) {
       // is a single file path
       unwatchFile( watcher, file )
     }
+
+    return watcher // chaining
   }
 
   watcher.getWatched = function () {
-    return Object.keys( watcher.files )
+    // TODO caching? premature optimization?
+    // JavaScript doesn't guarantee ordering here so we sort
+    // it alphabetically for consistency
+    return Object.keys( watcher.files ).sort()
   }
 
   watcher.close = function () {
@@ -127,6 +134,15 @@ api.watch = function watch ( file, callback ) {
       var fw = watcher.files[ filepath ]
       fw.close()
     })
+
+    return undefined // ( default behavour ) ( no chaining )
+  }
+
+  // helper function
+  watcher.clear = function () {
+    watcher.unwatch( '**' )
+
+    return watcher // chaining
   }
 
   if ( file ) {
@@ -189,12 +205,14 @@ function createFileWatcher ( watcher, filepath ) {
 }
 
 function pollFile ( fw ) {
-  if ( fw._locked ) throw new Error( 'fw is locked' )
   if ( fw._closed ) throw new Error( 'fw is closed' )
+  if ( fw._locked ) throw new Error( 'fw is locked' )
 
   fw._locked = true
   fs.stat( fw.filepath, function ( err, stats ) {
-    if ( fw._closed ) throw new Error( 'fw is closed' )
+    if ( fw._closed ) {
+      return console.log( 'fw has been closed' )
+    }
     if ( !fw._locked ) throw new Error( 'fw was not locked..' )
 
     process.nextTick(function () {
@@ -366,8 +384,8 @@ function trigger ( fw, evt ) {
 function schedulePoll ( fw, forcedInterval ) {
   console.log( ' === scheduling poll === ')
 
-  // if ( !fw._locked ) throw new Error( 'fw was not locked..' )
   if ( fw._closed ) throw new Error( 'fw is closed' )
+  // if ( !fw._locked ) throw new Error( 'fw was not locked..' )
 
   clearTimeout( fw.timeout )
   fw.timeout = setTimeout(function () {
