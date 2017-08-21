@@ -10,7 +10,7 @@ function run ( filepath ) {
   return require( resolved )
 }
 
-var filepath = path.join(__dirname, 'tmp', 'unwatch.js')
+var filepath = path.join(__dirname, 'tmp', 'close.js')
 
 rimraf.sync( filepath )
 
@@ -40,13 +40,12 @@ process.on( 'exit', function () {
 setTimeout( function () {
   console.log( 'watched files: ' + w.getWatched().join( ',' ) )
   w.unwatch( filepath )
-  console.log( 'watched files: ' + w.getWatched().join( ',' ) )
 
   setTimeout( function () {
     fs.writeFileSync( filepath, 'module.exports = 888' )
 
     setTimeout( function () {
-      console.log( 'process should remain active' )
+      console.log( 'closing watcher instance' )
       w.close()
     }, 500 )
 
