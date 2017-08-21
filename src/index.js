@@ -10,35 +10,40 @@ var minimatch = require('minimatch')
 var ALWAYS_COMPARE_FILECONTENT = false
 
 var MAX_ATTEMPTS = 5
-var ATTEMPT_INTERVAL = 10 // milliseconds
+var ATTEMPT_INTERVAL = 5 // milliseconds
 
-// some file systems round up to the nearest full second (i.e OSX)
+var SUPER_TESTING_SPEED_OVERRIDE = false
+if ( !!process.env.MITERU_SUPER_TESTING_SPEED_OVERRIDE ) SUPER_TESTING_SPEED_OVERRIDE = true
+
+// some file systems round up to the nearest full second (e.g. OSX)
 // for file mtime, atime, ctime etc -- so in order to account for
 // this edge case ( very edgy ) we need to diff the file contents
-// to determine if the file has been changed
+// to determine if the file has been changed during this time
 var EDGE_CASE_INTERVAL = 1000 // milliseconds
 
 // diffing HUGE files hurts the soul so we cap it at a reasonable (TM) size..
-var EDGE_CASE_MAX_SIZE = (1024 * 1024 * 15) // 15mb
+var EDGE_CASE_MAX_SIZE = (1024 * 1024 * 10) // 15mb
 
 // polling interval intensities based on delta time ( time since last change )
 var TEMPERATURE = {
   HOT: {
     AGE: (1000 * 60 * 5), // 5 min
-    INTERVAL: 33
+    INTERVAL: 25
   },
   SEMI_HOT: {
     AGE: (1000 * 60 * 15), // 15 min
-    INTERVAL: 99
+    INTERVAL: 25 * 3 // 75
   },
   WARM: {
     AGE: (1000 * 60 * 60), // 60 min
-    INTERVAL: 199
+    INTERVAL: 25 * 7 // 175
   },
   COLD: {
     AGE: (1000 * 60 * 60 * 3), // 3 hours
-    INTERVAL: 499
-  }
+    INTERVAL: 25 * 15 // 375
+  },
+  COLDEST_INTERVAL: 25 * 31, // 775
+  DORMANT_INTERVAL: 25 * 10 // 200
 }
 
 var DEBUG = {
@@ -51,6 +56,7 @@ DEBUG = {
   EVT: true
 }
 
+// set verbosity based on env variable MITERU_LOGLEVEL
 switch ( ( process.env.MITERU_LOGLEVEL || '' ).toLowerCase() ) {
   case 'silent':
   case 'silence':
@@ -87,11 +93,18 @@ switch ( ( process.env.MITERU_LOGLEVEL || '' ).toLowerCase() ) {
     }
     break
 
+  case 'dev':
+    DEBUG = DEBUG || {}
+    DEBUG.DEV = true
+    break
+
   default:
     DEBUG = {}
     break
 }
 
+// DEBUG.DEV = true
+// DEBUG.TEMPERATURE = true
 
 function log ( msg ) {
   console.log( msg )
@@ -151,6 +164,21 @@ api.watch = function watch ( file, callback ) {
     return watcher // chaining
   }
 
+  watcher._setDebugFlag = function ( file, key, value ) {
+    var filepath = path.resolve( file )
+
+    var fw = watcher.files[ filepath ]
+
+    if ( !fw ) {
+      throw new Error(
+        'no fileWatcher for [$1] found'.replace( '$1' , filepath)
+      )
+    } else {
+      fw._debug = fw._debug || {}
+      fw._debug[ key ] = value
+    }
+  }
+
   watcher.unwatch = function ( file ) {
     var isPattern = glob.hasMagic( file )
 
@@ -161,14 +189,18 @@ api.watch = function watch ( file, callback ) {
       var files = Object.keys( watcher.files )
 
       files.forEach(function ( file ) {
-        var remove = minimatch( file, pattern )
-        if ( remove ) {
+        var shouldRemove = minimatch( file, pattern )
+        if ( shouldRemove ) {
           unwatchFile( watcher, file )
         }
       })
     } else {
       // is a single file path
       unwatchFile( watcher, file )
+    }
+
+    if ( Object.keys( watcher.files ).length === 0 ) {
+      // console.log( ' === watcher empty === ' )
     }
 
     return watcher // chaining
@@ -179,6 +211,19 @@ api.watch = function watch ( file, callback ) {
     // JavaScript doesn't guarantee ordering here so we sort
     // it alphabetically for consistency
     return Object.keys( watcher.files ).sort()
+  }
+
+  watcher.getLog = function ( file ) {
+    var filepath = path.resolve( file )
+
+    var fw = watcher.files[ filepath ]
+    var o = {}
+
+    Object.keys( fw.log ).forEach(function ( key ) {
+      o[ key ] = fw.log[ key ]
+    })
+
+    return o
   }
 
   watcher.close = function () {
@@ -197,6 +242,10 @@ api.watch = function watch ( file, callback ) {
   // helper function
   watcher.clear = function () {
     watcher.unwatch( '**' )
+
+    if ( watcher.getWatched().length !== 0 ) {
+      throw new Error( 'a clear attempt did not remove all watched files!' )
+    }
 
     return watcher // chaining
   }
@@ -220,6 +269,8 @@ function watchFile ( watcher, file, initFlagged ) {
     // add new file watcher
     var fw = createFileWatcher( watcher, filepath )
 
+    // initFlagged indicates that this file was added to the watch list
+    // during the same tick (nodejs process tick)
     if ( initFlagged === true ) {
       fw.initFlagged = true
     }
@@ -238,6 +289,7 @@ function unwatchFile ( watcher, file ) {
     delete watcher.files[ filepath ]
   } else {
     // already unwatched
+    DEBUG.LOG && log( '(ignored) file already unwatched' )
   }
 }
 
@@ -247,7 +299,8 @@ function createFileWatcher ( watcher, filepath ) {
 
   var fw = {
     watcher: watcher,
-    filepath: filepath
+    filepath: filepath,
+    log: {}
   }
 
   fw.close = function () {
@@ -255,7 +308,8 @@ function createFileWatcher ( watcher, filepath ) {
     fw.closed = true
   }
 
-  schedulePoll( fw )
+  // start polling the filepath
+  schedulePoll( fw, 1 )
 
   return fw
 }
@@ -266,9 +320,29 @@ function unlockFile ( fw ) {
 }
 
 function schedulePoll ( fw, forcedInterval ) {
+  if ( fw.closed ) throw new Error( 'fw is closed' )
   if ( fw.locked ) throw new Error( 'fw locked' )
 
-  var interval = ( forcedInterval || fw.pollInterval || 33 )
+  var interval = (
+    fw.pollInterval ||
+    100
+  )
+
+  // if fw is not awake then cap the polling interval
+  if ( !fw._awake ) {
+    if ( interval < TEMPERATURE.DORMANT_INTERVAL ) {
+      interval = TEMPERATURE.DORMANT_INTERVAL
+    }
+  }
+
+  if ( forcedInterval !== undefined ) interval = forcedInterval
+
+  if ( SUPER_TESTING_SPEED_OVERRIDE ) {
+    interval = Math.min(
+      interval,
+      5
+    )
+  }
 
   if ( fw.timeout !== undefined ) throw new Error( 'fw.timeout already in progress' )
 
@@ -276,7 +350,7 @@ function schedulePoll ( fw, forcedInterval ) {
   fw.timeout = setTimeout(function () {
     fw.timeout = undefined
     pollFile( fw )
-  }, forcedInterval || fw.pollInterval || 33 )
+  }, interval )
 }
 
 function pollFile ( fw ) {
@@ -284,6 +358,12 @@ function pollFile ( fw ) {
 
   if ( fw.locked ) throw new Error( 'fw is locked' )
   fw.locked = true
+
+
+  // var isEdgy = ( fw.mtime && ( Date.now() - stats.mtime ) < EDGE_CASE_INTERVAL )
+  // TODO rethink fs.readFileSync situation
+  // ( could be that fs.stat is outdated when fs.readFileSync is performed )
+
   fs.stat( fw.filepath, function ( err, stats ) {
     if ( fw.closed ) {
       DEBUG.LOG && log( 'fw has been closed' )
@@ -293,7 +373,10 @@ function pollFile ( fw ) {
     if ( fw.locked !== true ) throw new Error( 'fw was not locked prior to fs.stat' )
 
     if ( !fw.watcher.files[ fw.filepath ] ) {
-      // TODO
+      // TODO -- this isn't a legit error probably
+      // -> file was just removed from the watch list
+      // during its polling
+      //
       // fileWatcher has been removed
       var msg = 'fileWatcher has been removed'
       throw new Error( msg )
@@ -311,13 +394,13 @@ function pollFile ( fw ) {
             // file existed previously, assume that it should still
             // exist and attempt to fs.stat it again.
             // or if the file was added on init -- assume that it should
-            // exist (or will exist within a few milliseconds [*])
+            // exist ( or will exist within a few milliseconds [*] )
             // [*] within (MAX_ATTEMPTS * ATTEMPT_INTERVAL) milliseconds
             fw.attempts = ( fw.attempts || 0 ) + 1 // increment attempts
 
             if ( fw.attempts > MAX_ATTEMPTS ) { // MAX_ATTEMPTS exceeded
               // after a number of failed attempts
-              // consider the file non-existent
+              // consider the file truly non-existent
               fw.exists = false
 
               if ( fw.initFlagged ) {
@@ -340,7 +423,7 @@ function pollFile ( fw ) {
               unlockFile( fw )
               schedulePoll( fw )
             } else {
-              // schedule next poll faster than usual
+              // schedule next poll faster than normal ( ATTEMPT_INTERVAL )
               unlockFile( fw )
               schedulePoll( fw, ATTEMPT_INTERVAL)
             }
@@ -350,15 +433,39 @@ function pollFile ( fw ) {
             fw.initFlagged = false
 
             // file didn't exist previously so it's safe to assume
-            // it still doesn't exist
+            // it still doesn't and isn't supposed to exist
+            // schedule next poll normally
             unlockFile( fw )
             schedulePoll( fw )
           }
           break
+
         default: throw err
       }
-    } else {
-      // no errors
+    } else { // no error
+
+      // debugging helpers
+      var debug = fw.watcher.files[ fw.filepath ]._debug
+      if ( debug ) {
+        if ( debug.removeAfterFSStat ) {
+          debug.removeAfterFSStat = false
+          // related test:
+          // 'watch a new file after init removed between FSStat:ing'
+          fs.unlinkSync( fw.filepath )
+        }
+
+        if ( debug.changeContentAfterFSStat ) {
+          debug.changeContentAfterFSStat = false
+          // related test:
+          // 'watch a single file -- file content appended between FSStat:ing'
+
+          var text = fs.readFileSync( fw.filepath ).toString( 'utf8' )
+          text += ' ; '
+          fs.writeFileSync( fw.filepath, text )
+          DEBUG.DEV && console.log( 'written: ' + text )
+        }
+      }
+
       fw.attempts = 0 // reset attempts
 
       var type = 'unknown'
@@ -384,7 +491,8 @@ function pollFile ( fw ) {
       // from the previous file content -- however, we do not care if the file content
       // has not changed and we will avoid comparing/reading the file contents unless
       // necessary -- for example during EDGE_CASE_INTERVAL we will have to check
-      // file contents -- or perhaps when a flag is set? ( ALWAYS_COMPARE_FILECONTENT ) TODO
+      // file contents -- or perhaps when a flag is set? ( ALWAYS_COMPARE_FILECONTENT? )
+      // TODO
       var sizeChanged = ( stats.size !== fw.size )
       var mtimeChanged = ( stats.mtime > fw.mtime )
 
@@ -401,6 +509,17 @@ function pollFile ( fw ) {
 
       var fileContentHasChanged = undefined
 
+      var shouldReadFileContents = (
+        !existedPreviously ||
+        sizeChanged ||
+        mtimeChanged ||
+        shouldCompareFileContents
+      )
+
+      if ( shouldReadFileContents ) {
+        DEBUG.FILE && log( 'FILE WILL READ CONTENT   : ' + fw.filepath )
+      }
+
       if ( shouldCompareFileContents ) {
         DEBUG.FILE && log( 'FILE WILL COMPARE CONTENT   : ' + fw.filepath )
       }
@@ -408,32 +527,114 @@ function pollFile ( fw ) {
       var fileContent
 
       // only fs.readFileSync fileContent if necessary
-      if ( sizeChanged || mtimeChanged || shouldCompareFileContents ) {
+      // if ( !existedPreviously || sizeChanged || mtimeChanged || shouldCompareFileContents ) {
+      if ( shouldReadFileContents ) {
+        DEBUG.DEV && console.log( 'reading file contents' )
 
         try {
+          // NOTE
+          // there's a caveat here that fs.stat and fs.readFileSync
+          // may be out of sync -- in other words fs.readFileSync may return
+          // an updated file content that may not be reflected by the
+          // size and mtime reported by the fs.stat results that came before it
+          // -> this may result in two change events being emitted if left as is
+          // -> in order to combat this, if we will update the mtime and size
+          // to the most recent values if we detect that the file contents
+          // have been updated [#1]
           fileContent = fs.readFileSync( fw.filepath )
         } catch ( err ) {
           switch ( err.code ) {
             case 'ENOENT':
               fw.attempts++
-              // possibly if file is removed during a succesful fs.stat
-              // -- simply let pollFile handle it (and any errors)  again
+              // possibly if file is removed between a succesful fs.stat
+              // and fs.readFileSync
+              // -- simply let pollFile handle it ( and any errors ) again
+              // -- if the file has really been removed then the next fs.stat will
+              // be able to handle it
+              // console.log( 'removed between fs.stat and fs.readFileSync' )
+              fw.log[ 'FSStatReadFileSyncErrors' ] = (
+                ( fw.log[ 'FSStatReadFileSyncErrors' ] || 0 ) + 1
+              )
+
               return process.nextTick(function () {
-                pollFile( fw )
+                unlockFile( fw )
+                schedulePoll( fw, 1 )
+                // pollFile( fw )
               })
               break
-            default: throw err
-          }
-        }
 
-        if ( fw.fileContent ) {
-          fileContentHasChanged = ( !fileContent.equals( fw.fileContent ) )
+            default:
+              console.error( 'Error between fs.stat and fs.readFileSync' )
+              throw err
+          }
         }
       }
 
+      fileContentHasChanged = (
+        existedPreviously &&
+        fileContent &&
+        fw.fileContent &&
+        !( fw.fileContent.equals( fileContent ) )
+
+        // !existedPreviously || (
+        //   fileContent &&
+        //   fw.fileContent &&
+        //   !( fw.fileContent.equals( fileContent ) )
+        // )
+      )
+
+      if ( fileContentHasChanged ) {
+        DEBUG.DEV && console.log( 'content was: ' + fw.fileContent.toString( 'utf8' ) )
+        DEBUG.DEV && console.log( 'content now: ' + fileContent.toString( 'utf8' ) )
+      }
+
+      if ( sizeChanged ) {
+        DEBUG.DEV && console.log( 'size was: ' + fw.size )
+        DEBUG.DEV && console.log( 'size now: ' + stats.size )
+      }
+
+      if ( mtimeChanged ) {
+        DEBUG.DEV && console.log( 'mtime was: ' + fw.mtime )
+        DEBUG.DEV && console.log( 'mtime now: ' + stats.mtime )
+      }
+
       // update fileContent if necessary
-      if ( isEdgy && ( fileContentHasChanged || !fw.fileContent ) ) {
+      // if ( fileContent && ( fileContentHasChanged || !fw.fileContent ) ) {
+      if ( fileContent && ( !existedPreviously || fileContentHasChanged ) ) {
+        DEBUG.DEV && console.log( 'fileContent updated' )
+        // console.log( fileContent.toString( 'utf8' ) )
         setFileContent( fw, fileContent )
+      }
+
+      if ( fileContentHasChanged ) {
+        // [#1]
+        // update mtime and size to homogenize the
+        // potential diffs between calls to fs.stat and fs.readFileSync
+        //
+        // Another solution could be to debounce or throttle
+        // event triggering
+        //
+        // related test:
+        // 'watch a single file -- file content appended between FSStat:ing'
+        //
+        // Another solution could be to test during stats.size or stats.mtime
+        // change if fileContent equals to fw.fileContent then skip
+        // triggering a 'change' event
+        var newMtime = Date.now()
+        // var newMtime = Math.floor( Date.now() / 1000 ) * 1000
+        if ( stats.mtime < newMtime ) {
+          DEBUG.DEV && console.log( '  updated stats.mtime' )
+          stats.mtime = new Date( newMtime )
+        }
+
+        if ( stats.size !== fileContent.length ) {
+          DEBUG.DEV && console.log(
+            '  updated stats.size -- was: $was, is: $is'
+            .replace( '$was', stats.size )
+            .replace( '$is', fileContent.length )
+          )
+          stats.size = fileContent.length
+        }
       }
 
       // update stats
@@ -454,20 +655,45 @@ function pollFile ( fw ) {
       if ( existedPreviously ) {
         if ( sizeChanged || mtimeChanged || fileContentHasChanged ) {
           DEBUG.EVT && log( 'change: ' + fw.filepath )
+          DEBUG.DEV && console.log(
+            'change type: size $1, mtime $2, fileContent $3: [$4]'
+            .replace( '$1', sizeChanged )
+            .replace( '$2', mtimeChanged )
+            .replace( '$3', fileContentHasChanged )
+            .replace( '$4', fw.filepath )
+          )
+
           trigger( fw, 'change' )
         }
       } else {
         if ( fw.initFlagged === true ) {
           fw.initFlagged = false
           DEBUG.EVT && log( 'init: ' + fw.filepath )
+          DEBUG.DEV && console.log(
+            'init type: size $1, mtime $2, fileContent $3: [$4]'
+            .replace( '$1', sizeChanged )
+            .replace( '$2', mtimeChanged )
+            .replace( '$3', fileContentHasChanged )
+            .replace( '$4', fw.filepath )
+          )
           trigger( fw, 'init' )
         } else {
           DEBUG.EVT && log( 'add: ' + fw.filepath )
+          DEBUG.DEV && console.log(
+            'add type: size $1, mtime $2, fileContent $3: [$4]'
+            .replace( '$1', sizeChanged )
+            .replace( '$2', mtimeChanged )
+            .replace( '$3', fileContentHasChanged )
+            .replace( '$4', fw.filepath )
+          )
           trigger( fw, 'add' )
         }
       }
     }
   })
+
+  function finish () {
+  }
 }
 
 function trigger ( fw, evt ) {
@@ -475,7 +701,11 @@ function trigger ( fw, evt ) {
     throw new Error( 'no callback function provided for watcher instance' )
   }
 
-  fw.watcher.callback( evt, fw.filepath )
+  clearTimeout( fw.triggerTimeout )
+  fw.triggerTimeout = setTimeout(function () {
+    fw._awake = true
+    fw.watcher.callback( evt, fw.filepath )
+  }, 1)
 }
 
 function setFileContent ( fw, content ) {
@@ -501,9 +731,9 @@ function updatePollingInterval ( fw ) {
   //   return
   // }
 
-  // if ( w.type !== 'file' ) {
-  //   throw new Error( 'trying to update pollInterval on non-file type [' + w.type + ']' )
-  // }
+  if ( fw.type !== 'file' ) {
+    throw new Error( 'trying to update pollInterval on non-file type [' + w.type + ']' )
+  }
 
   var now = Date.now()
   var delta = ( now - fw.mtime )
@@ -527,6 +757,11 @@ function updatePollingInterval ( fw ) {
       if ( fw.pollInterval !== TEMPERATURE.COLD.INTERVAL ) {
         DEBUG.TEMPERATURE && log( 'COLD file: ' + filepath )
         fw.pollInterval = TEMPERATURE.COLD.INTERVAL
+      }
+    } else {
+      if ( fw.pollInterval !== TEMPERATURE.COLDEST_INTERVAL ) {
+        DEBUG.TEMPERATURE && log( 'COLDEST file: ' + filepath )
+        fw.pollInterval = TEMPERATURE.COLDEST_INTERVAL
       }
     }
   }
