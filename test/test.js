@@ -17,7 +17,7 @@ if ( !!process.env.MITERU_SUPER_TESTING_SPEED_OVERRIDE ) {
   ACTION_INTERVAL = 50
 }
 
-// process.env.
+// process.env.DEV = true
 
 function run ( filepath ) {
   var resolved = require.resolve( filepath )
@@ -119,20 +119,26 @@ test( 'watch a single file', function ( t ) {
     })
 
     var actions = [
-      function () {
+      function ( next ) {
         fs.writeFileSync( filepath, 'module.exports = 88' )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         rimraf.sync( filepath )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         fs.writeFileSync( filepath, 'module.exports = 11' )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         fs.writeFileSync( filepath, 'module.exports = "kadabra"' )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         fs.writeFileSync( filepath, 'module.exports = "allakhazam"' )
+        console.log( 'written allakhazam' )
+        setTimeout( next, ACTION_INTERVAL )
       },
     ]
 
@@ -141,8 +147,7 @@ test( 'watch a single file', function ( t ) {
     function next () {
       var a = actions.shift()
       if ( a ) {
-        a()
-        setTimeout( next, ACTION_INTERVAL )
+        a( next )
       } else {
         finish()
       }
@@ -234,22 +239,28 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
     })
 
     var actions = [
-      function () {
+      function ( next ) {
         fs.writeFileSync( filepath, 'module.exports = 88' )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         rimraf.sync( filepath )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         fs.writeFileSync( filepath, 'module.exports = 11' )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         w._setDebugFlag( filepath, 'changeContentAfterFSStat', true )
 
         fs.writeFileSync( filepath, 'module.exports = "kadabra"' )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         fs.writeFileSync( filepath, 'module.exports = "allakhazam"' )
+        console.log( 'written allakhazam' )
+        setTimeout( next, ACTION_INTERVAL )
       },
     ]
 
@@ -258,8 +269,7 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
     function next () {
       var a = actions.shift()
       if ( a ) {
-        a()
-        setTimeout( next, ACTION_INTERVAL )
+        a( next )
       } else {
         finish()
       }
@@ -354,14 +364,17 @@ test( 'watch a non-existing file', function ( t ) {
     })
 
     var actions = [
-      function () {
+      function ( next ) {
         fs.writeFileSync( filepath, 'module.exports = 88' )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         rimraf.sync( filepath )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         fs.writeFileSync( filepath, 'module.exports = 11' )
+        setTimeout( next, ACTION_INTERVAL )
       },
     ]
 
@@ -370,8 +383,7 @@ test( 'watch a non-existing file', function ( t ) {
     function next () {
       var a = actions.shift()
       if ( a ) {
-        a()
-        setTimeout( next, ACTION_INTERVAL )
+        a( next )
       } else {
         finish()
       }
@@ -467,27 +479,33 @@ test( 'watch a new file after init', function ( t ) {
     })
 
     var actions = [
-      function () {
+      function ( next ) {
         fs.writeFileSync( filepath, 'module.exports = 88' )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         rimraf.sync( filepath )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         fs.writeFileSync( filepath, 'module.exports = 11' )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         w.unwatch( filepath )
         rimraf.sync( filepath )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         w.add( filepath2 )
         var content = ( 'module.exports = ' + timestamp )
         fs.writeFileSync( filepath2, content )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         w.add( filepath )
         fs.writeFileSync( filepath, 'module.exports = 22' )
+        setTimeout( next, ACTION_INTERVAL )
       },
     ]
 
@@ -496,8 +514,7 @@ test( 'watch a new file after init', function ( t ) {
     function next () {
       var a = actions.shift()
       if ( a ) {
-        a()
-        setTimeout( next, ACTION_INTERVAL )
+        a( next )
       } else {
         finish()
       }
@@ -604,20 +621,24 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
     })
 
     var actions = [
-      function () {
+      function ( next ) {
         fs.writeFileSync( filepath, 'module.exports = 88' )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         rimraf.sync( filepath )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         fs.writeFileSync( filepath, 'module.exports = 11' )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         w.unwatch( filepath )
         rimraf.sync( filepath )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         w.add( filepath2 )
         w._setDebugFlag( filepath2, 'removeAfterFSStat', true )
 
@@ -633,11 +654,12 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
         try {
           fs.readFileSync( filepath2 )
           t.pass( 'file was created and should be removed soon by debug flag removeAfterFSStat' )
+          setTimeout( next, ACTION_INTERVAL )
         } catch ( err ) {
           t.fail( 'failed to create file' )
         }
       },
-      function () {
+      function ( next ) {
         try {
           fs.readFileSync( filepath2 )
           t.fail( 'file was not removed correctly with debug flag removeAfterFSStat' )
@@ -651,10 +673,12 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
 
         var content = ( 'module.exports = ' + timestamp )
         fs.writeFileSync( filepath2, content )
+        setTimeout( next, ACTION_INTERVAL )
       },
-      function () {
+      function ( next ) {
         w.add( filepath )
         fs.writeFileSync( filepath, 'module.exports = 22' )
+        setTimeout( next, ACTION_INTERVAL )
       },
     ]
 
@@ -663,8 +687,7 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
     function next () {
       var a = actions.shift()
       if ( a ) {
-        a()
-        setTimeout( next, ACTION_INTERVAL )
+        a( next )
       } else {
         finish()
       }
@@ -720,6 +743,8 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
 test( 'exit process after watcher is closed', function ( t ) {
   t.timeoutAfter( 5000 )
 
+  process.env.DEV = false
+
   prepareTestFiles(function () {
     var filepath = path.join( __dirname, 'tmp', 'close.js' )
 
@@ -748,6 +773,13 @@ test( 'exit process after watcher is closed', function ( t ) {
 
     process.env.MITERU_LOGLEVEL = 'silent'
 
+    var _t = setTimeout(function () {
+      t.fail( 'timed out' )
+      try {
+        spawn.kill()
+      } catch ( err ) {}
+    }, 5000)
+
     var spawn = childProcess.spawn('node', [
       path.join( __dirname, 'test-close.js' )
     ])
@@ -765,6 +797,8 @@ test( 'exit process after watcher is closed', function ( t ) {
     })
 
     function finish () {
+      clearTimeout( _t )
+
       t.deepEqual(
         buffer.join( '' ).split( /[\r\n]+/g ).map(function ( line ) {
           return line.trim()
