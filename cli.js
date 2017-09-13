@@ -85,7 +85,7 @@ function exec (cmd) {
   }, 100)
 }
 
-watcher.setCallback(function ( evt, filepath ) {
+watcher.callback = function ( evt, filepath ) {
   switch ( evt ) {
     case 'unlink':
       console.log('CLI: unlink at: ' + filepath)
@@ -104,7 +104,7 @@ watcher.setCallback(function ( evt, filepath ) {
       }
       break
   }
-})
+}
 
 // watcher.on('unlink', function (info) {
 //   console.log('CLI: unlink at: ' + info.filepath)
