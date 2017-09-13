@@ -9,3 +9,6 @@ node_modules
 test/tmp
 
 coverage
+
+log.txt
+tempfile
