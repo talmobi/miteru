@@ -15,6 +15,10 @@ var ATTEMPT_INTERVAL = 5 // milliseconds
 var SUPER_TESTING_SPEED_OVERRIDE = false
 if ( !!process.env.MITERU_SUPER_TESTING_SPEED_OVERRIDE ) SUPER_TESTING_SPEED_OVERRIDE = true
 
+
+var TRIGGER_INTERVAL = 0
+if ( SUPER_TESTING_SPEED_OVERRIDE ) TRIGGER_INTERVAL = 0
+
 // some file systems round up to the nearest full second (e.g. OSX)
 // for file mtime, atime, ctime etc -- so in order to account for
 // this edge case ( very edgy ) we need to diff the file contents
@@ -56,7 +60,7 @@ DEBUG = {
   EVT: true
 }
 
-// set verbosity based on env variable MITERU_LOGLEVEL
+// set verbosity based on getEnv variable MITERU_LOGLEVEL
 switch ( ( process.env.MITERU_LOGLEVEL || '' ).toLowerCase() ) {
   case 'silent':
   case 'silence':
@@ -103,8 +107,20 @@ switch ( ( process.env.MITERU_LOGLEVEL || '' ).toLowerCase() ) {
     break
 }
 
-// DEBUG.DEV = true
+DEBUG.DEV = false
 // DEBUG.TEMPERATURE = true
+
+function getEnv ( key ) {
+  var v = process.env[ key ]
+
+  if ( v == null ) return false
+
+  try {
+    return !!JSON.parse( v )
+  } catch ( err ) {
+    return false
+  }
+}
 
 function log ( msg ) {
   console.log( msg )
@@ -133,9 +149,12 @@ process.on('exit', function () {
 var api = module.exports = {}
 
 api.watch = function watch ( file, callback ) {
+  if ( typeof callback !== 'function' ) callback = undefined
+
   var watcher = {
     files: {},
-    callback: callback
+    callback: callback,
+    evtCallbacks: {}
   }
 
   _watchers.push( watcher )
@@ -162,6 +181,19 @@ api.watch = function watch ( file, callback ) {
     }
 
     return watcher // chaining
+  }
+
+  watcher.on = function ( evt, callback ) {
+    watcher.evtCallbacks[ evt ] = watcher.evtCallbacks[ evt ] || []
+    watcher.evtCallbacks[ evt ].push( callback )
+
+    // return off function
+    return function () {
+      var i = watcher.evtCallbacks[ evt ].indexOf( callback )
+      if ( i !== -1 ) {
+        return watcher.evtCallbacks[ evt ].splice( i, 1 )
+      }
+    }
   }
 
   watcher._setDebugFlag = function ( file, key, value ) {
@@ -251,7 +283,15 @@ api.watch = function watch ( file, callback ) {
   }
 
   if ( file ) {
-    watcher.add( file )
+    if ( typeof file === 'string' ) {
+      watcher.add( file )
+    } else if ( file instanceof Array ) {
+      file.forEach( function ( f ) {
+        if ( f && typeof f === 'string' ) {
+          watcher.add( file )
+        }
+      })
+    }
   }
 
   return watcher
@@ -359,6 +399,7 @@ function pollFile ( fw ) {
   if ( fw.locked ) throw new Error( 'fw is locked' )
   fw.locked = true
 
+  getEnv( 'DEV' ) && console.log( ' == fs.stat:ing == ' )
 
   // var isEdgy = ( fw.mtime && ( Date.now() - stats.mtime ) < EDGE_CASE_INTERVAL )
   // TODO rethink fs.readFileSync situation
@@ -387,62 +428,21 @@ function pollFile ( fw ) {
       switch ( err.code ) {
         case 'ENOENT':
           DEBUG.ENOENT && log( ' === POLL ENOENT === ' )
-
-          var existedPreviously = ( fw.exists === true )
-
-          if ( existedPreviously || fw.initFlagged ) {
-            // file existed previously, assume that it should still
-            // exist and attempt to fs.stat it again.
-            // or if the file was added on init -- assume that it should
-            // exist ( or will exist within a few milliseconds [*] )
-            // [*] within (MAX_ATTEMPTS * ATTEMPT_INTERVAL) milliseconds
-            fw.attempts = ( fw.attempts || 0 ) + 1 // increment attempts
-
-            if ( fw.attempts > MAX_ATTEMPTS ) { // MAX_ATTEMPTS exceeded
-              // after a number of failed attempts
-              // consider the file truly non-existent
-              fw.exists = false
-
-              if ( fw.initFlagged ) {
-                // TODO -- throw error since file on init didn't exist?
-                // perhaps user expects it to exist since it was added on init?
-                // --
-                // in any case the init phase has ended
-                // for this file did it exist or not
-              }
-
-              // in any case the init phase has ended
-              // for this file did it exist or not, previously or otherwise
-              fw.initFlagged = false
-
-              // TODO trigger 'unlink' event
-              DEBUG.EVT && log( 'unlink: ' + fw.filepath )
-              trigger( fw, 'unlink' )
-
-              // schedule next poll
-              unlockFile( fw )
-              schedulePoll( fw )
-            } else {
-              // schedule next poll faster than normal ( ATTEMPT_INTERVAL )
-              unlockFile( fw )
-              schedulePoll( fw, ATTEMPT_INTERVAL)
-            }
-          } else {
-            // in any case the init phase has ended
-            // for this file did it exist or not
-            fw.initFlagged = false
-
-            // file didn't exist previously so it's safe to assume
-            // it still doesn't and isn't supposed to exist
-            // schedule next poll normally
-            unlockFile( fw )
-            schedulePoll( fw )
-          }
+          handleFSStatError( fw )
           break
 
         default: throw err
       }
     } else { // no error
+
+      if ( !stats.size ) {
+        getEnv( 'DEV' ) && console.log( ' ============ size was falsy: ' + stats.size )
+
+        // handle as ENOENT error
+        return handleFSStatError( fw )
+      }
+
+      getEnv( 'DEV' ) && console.log( ' == fs.stat OK == ' )
 
       // debugging helpers
       var debug = fw.watcher.files[ fw.filepath ]._debug
@@ -451,7 +451,11 @@ function pollFile ( fw ) {
           debug.removeAfterFSStat = false
           // related test:
           // 'watch a new file after init removed between FSStat:ing'
-          fs.unlinkSync( fw.filepath )
+          try {
+            fs.unlinkSync( fw.filepath )
+          } catch ( err ) {
+            throw err
+          }
         }
 
         if ( debug.changeContentAfterFSStat ) {
@@ -459,9 +463,13 @@ function pollFile ( fw ) {
           // related test:
           // 'watch a single file -- file content appended between FSStat:ing'
 
-          var text = fs.readFileSync( fw.filepath ).toString( 'utf8' )
-          text += ' ; '
-          fs.writeFileSync( fw.filepath, text )
+          try {
+            var text = fs.readFileSync( fw.filepath ).toString( 'utf8' )
+            text += ' ; '
+            fs.writeFileSync( fw.filepath, text )
+          } catch ( err ) {
+            throw err
+          }
           DEBUG.DEV && console.log( 'written: ' + text )
         }
       }
@@ -502,6 +510,7 @@ function pollFile ( fw ) {
       var shouldCompareFileContents = ALWAYS_COMPARE_FILECONTENT || false
 
       if ( isEdgy && !skipEdgeCase ) {
+        getEnv( 'DEV' ) && console.log( 'is edgy' )
         // during edge case period we can't rely on mtime or file size alone
         // and we need to compare the actual contents of the file
         shouldCompareFileContents = true
@@ -527,9 +536,7 @@ function pollFile ( fw ) {
       var fileContent
 
       // only fs.readFileSync fileContent if necessary
-      // if ( !existedPreviously || sizeChanged || mtimeChanged || shouldCompareFileContents ) {
       if ( shouldReadFileContents ) {
-        DEBUG.DEV && console.log( 'reading file contents' )
 
         try {
           // NOTE
@@ -542,6 +549,8 @@ function pollFile ( fw ) {
           // to the most recent values if we detect that the file contents
           // have been updated [#1]
           fileContent = fs.readFileSync( fw.filepath )
+
+          getEnv( 'DEV' ) && console.log( 'read file contents: ' + fileContent.toString( 'utf8' ) )
         } catch ( err ) {
           switch ( err.code ) {
             case 'ENOENT':
@@ -558,7 +567,7 @@ function pollFile ( fw ) {
 
               return process.nextTick(function () {
                 unlockFile( fw )
-                schedulePoll( fw, 1 )
+                schedulePoll( fw, ATTEMPT_INTERVAL )
                 // pollFile( fw )
               })
               break
@@ -583,28 +592,37 @@ function pollFile ( fw ) {
         // )
       )
 
+      getEnv( 'DEV' ) && console.log( ' == 1 == ' )
+
       if ( fileContentHasChanged ) {
-        DEBUG.DEV && console.log( 'content was: ' + fw.fileContent.toString( 'utf8' ) )
-        DEBUG.DEV && console.log( 'content now: ' + fileContent.toString( 'utf8' ) )
+        getEnv( 'DEV' ) && console.log( 'content was: ' + fw.fileContent.toString( 'utf8' ) )
+        getEnv( 'DEV' ) && console.log( 'content now: ' + fileContent.toString( 'utf8' ) )
       }
+
+      getEnv( 'DEV' ) && console.log( ' == 2 == ' )
 
       if ( sizeChanged ) {
-        DEBUG.DEV && console.log( 'size was: ' + fw.size )
-        DEBUG.DEV && console.log( 'size now: ' + stats.size )
+        getEnv( 'DEV' ) && console.log( 'size was: ' + fw.size )
+        getEnv( 'DEV' ) && console.log( 'size now: ' + stats.size )
       }
+
+      getEnv( 'DEV' ) && console.log( ' == 3 == ' )
 
       if ( mtimeChanged ) {
-        DEBUG.DEV && console.log( 'mtime was: ' + fw.mtime )
-        DEBUG.DEV && console.log( 'mtime now: ' + stats.mtime )
+        getEnv( 'DEV' ) && console.log( 'mtime was: ' + fw.mtime )
+        getEnv( 'DEV' ) && console.log( 'mtime now: ' + stats.mtime )
       }
 
+      getEnv( 'DEV' ) && console.log( ' == 4 == ' )
+
       // update fileContent if necessary
-      // if ( fileContent && ( fileContentHasChanged || !fw.fileContent ) ) {
       if ( fileContent && ( !existedPreviously || fileContentHasChanged ) ) {
-        DEBUG.DEV && console.log( 'fileContent updated' )
+        getEnv( 'DEV' ) && console.log( 'fileContent updated: ' + fileContent.toString( 'utf8' ) )
         // console.log( fileContent.toString( 'utf8' ) )
         setFileContent( fw, fileContent )
       }
+
+      getEnv( 'DEV' ) && console.log( ' == 5 == ' )
 
       if ( fileContentHasChanged ) {
         // [#1]
@@ -621,14 +639,13 @@ function pollFile ( fw ) {
         // change if fileContent equals to fw.fileContent then skip
         // triggering a 'change' event
         var newMtime = Date.now()
-        // var newMtime = Math.floor( Date.now() / 1000 ) * 1000
         if ( stats.mtime < newMtime ) {
-          DEBUG.DEV && console.log( '  updated stats.mtime' )
+          getEnv( 'DEV' ) && console.log( '  updated stats.mtime' )
           stats.mtime = new Date( newMtime )
         }
 
         if ( stats.size !== fileContent.length ) {
-          DEBUG.DEV && console.log(
+          getEnv( 'DEV' ) && console.log(
             '  updated stats.size -- was: $was, is: $is'
             .replace( '$was', stats.size )
             .replace( '$is', fileContent.length )
@@ -637,26 +654,36 @@ function pollFile ( fw ) {
         }
       }
 
+      getEnv( 'DEV' ) && console.log( ' == 6 == ' )
+
       // update stats
       fw.type = type
       fw.exists = true
       fw.size = stats.size
       fw.mtime = stats.mtime
 
+      getEnv( 'DEV' ) && console.log( ' == 7 == ' )
+
       // change the polling interval dynamically
       // based on how often the file is changed
       updatePollingInterval( fw )
+
+      getEnv( 'DEV' ) && console.log( ' == 8 == ' )
 
       // schedule next poll
       unlockFile( fw )
       schedulePoll( fw )
 
+      getEnv( 'DEV' ) && console.log( ' == 9 == ' )
+
       // trigger events
       if ( existedPreviously ) {
+        getEnv( 'DEV' ) && console.log( ' == 10 == ' )
+
         if ( sizeChanged || mtimeChanged || fileContentHasChanged ) {
           DEBUG.EVT && log( 'change: ' + fw.filepath )
-          DEBUG.DEV && console.log(
-            'change type: size $1, mtime $2, fileContent $3: [$4]'
+          getEnv( 'DEV' ) && console.log(
+            'change evt --  size $1, mtime $2, fileContent $3: [$4]'
             .replace( '$1', sizeChanged )
             .replace( '$2', mtimeChanged )
             .replace( '$3', fileContentHasChanged )
@@ -665,12 +692,16 @@ function pollFile ( fw ) {
 
           trigger( fw, 'change' )
         }
+
+        getEnv( 'DEV' ) && console.log( ' == 11 == ' )
       } else {
+        getEnv( 'DEV' ) && console.log( ' == 12 == ' )
+
         if ( fw.initFlagged === true ) {
           fw.initFlagged = false
           DEBUG.EVT && log( 'init: ' + fw.filepath )
-          DEBUG.DEV && console.log(
-            'init type: size $1, mtime $2, fileContent $3: [$4]'
+          getEnv( 'DEV' ) && console.log(
+            'init evt -- size $1, mtime $2, fileContent $3: [$4]'
             .replace( '$1', sizeChanged )
             .replace( '$2', mtimeChanged )
             .replace( '$3', fileContentHasChanged )
@@ -679,8 +710,8 @@ function pollFile ( fw ) {
           trigger( fw, 'init' )
         } else {
           DEBUG.EVT && log( 'add: ' + fw.filepath )
-          DEBUG.DEV && console.log(
-            'add type: size $1, mtime $2, fileContent $3: [$4]'
+          getEnv( 'DEV' ) && console.log(
+            'add evt -- size $1, mtime $2, fileContent $3: [$4]'
             .replace( '$1', sizeChanged )
             .replace( '$2', mtimeChanged )
             .replace( '$3', fileContentHasChanged )
@@ -688,6 +719,8 @@ function pollFile ( fw ) {
           )
           trigger( fw, 'add' )
         }
+
+        getEnv( 'DEV' ) && console.log( ' == 13 == ' )
       }
     }
   })
@@ -696,16 +729,107 @@ function pollFile ( fw ) {
   }
 }
 
+function handleFSStatError ( fw ) {
+  var existedPreviously = ( fw.exists === true )
+
+  if ( existedPreviously || fw.initFlagged ) {
+    // file existed previously, assume that it should still
+    // exist and attempt to fs.stat it again.
+    // or if the file was added on init -- assume that it should
+    // exist ( or will exist within a few milliseconds [*] )
+    // [*] within (MAX_ATTEMPTS * ATTEMPT_INTERVAL) milliseconds
+    fw.attempts = ( fw.attempts || 0 ) + 1 // increment attempts
+
+    if ( fw.attempts > MAX_ATTEMPTS ) { // MAX_ATTEMPTS exceeded
+      // after a number of failed attempts
+      // consider the file truly non-existent
+      fw.exists = false
+
+      if ( fw.initFlagged ) {
+        // TODO -- throw error since file on init didn't exist?
+        // perhaps user expects it to exist since it was added on init?
+        // --
+        // in any case the init phase has ended
+        // for this file did it exist or not
+      }
+
+      // in any case the init phase has ended
+      // for this file did it exist or not, previously or otherwise
+      fw.initFlagged = false
+
+      // TODO trigger 'unlink' event
+      DEBUG.EVT && log( 'unlink: ' + fw.filepath )
+      getEnv( 'DEV' ) && console.log(
+        'unlink evt -- [$4]'
+        .replace( '$4', fw.filepath )
+      )
+      trigger( fw, 'unlink' )
+
+      // schedule next poll
+      unlockFile( fw )
+      schedulePoll( fw )
+    } else {
+      // schedule next poll faster than normal ( ATTEMPT_INTERVAL )
+      unlockFile( fw )
+      schedulePoll( fw, ATTEMPT_INTERVAL)
+    }
+  } else {
+    // in any case the init phase has ended
+    // for this file did it exist or not
+    fw.initFlagged = false
+
+    // file didn't exist previously so it's safe to assume
+    // it still doesn't and isn't supposed to exist
+    // schedule next poll normally
+    unlockFile( fw )
+    schedulePoll( fw )
+  }
+}
+
 function trigger ( fw, evt ) {
+  // console.log( 'TRIGGERING: ' + evt + ' - ' + fw.filepath )
+
   if ( typeof fw.watcher.callback !== 'function' ) {
-    throw new Error( 'no callback function provided for watcher instance' )
+    // throw new Error( 'no callback function provided for watcher instance' )
   }
 
   clearTimeout( fw.triggerTimeout )
-  fw.triggerTimeout = setTimeout(function () {
+  fw.triggerTimeout = setTimeout( function () {
+
     fw._awake = true
-    fw.watcher.callback( evt, fw.filepath )
-  }, 1)
+    if ( typeof fw.watcher.callback === 'function' ) {
+      fw.watcher.callback( evt, fw.filepath )
+    }
+
+    var evtCallbacks = fw.watcher.evtCallbacks[ evt ] || []
+    evtCallbacks.forEach( function ( evtCallback ) {
+      return evtCallback( fw.filepath, stats )
+
+      var skipped = false
+
+      try {
+        var stats = fs.statSync( fw.filepath )
+
+        var sizeChanged = ( stats.size !== fw.size )
+        var mtimeChanged = ( stats.mtime > fw.mtime )
+
+        if ( !sizeChanged && !mtimeChanged ) {
+          evtCallback( fw.filepath, stats )
+        } else {
+          skipped = true
+        }
+
+      } catch ( err ) {
+        // ignore ( handled by next poll )
+        skipped = true
+      }
+
+      if ( skipped ) {
+        console.log( ' === SKIPPED: ' + evt + ' - ' + fw.filepath )
+      }
+    } )
+
+  }, TRIGGER_INTERVAL )
 }
 
 function setFileContent ( fw, content ) {
