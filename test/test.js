@@ -13,12 +13,6 @@ var test = require('tape')
 
 var ACTION_INTERVAL = 100
 
-process.env.MITERU_SUPER_TESTING_SPEED_OVERRIDE = false
-
-if ( !!process.env.MITERU_SUPER_TESTING_SPEED_OVERRIDE ) {
-  ACTION_INTERVAL = 50
-}
-
 // process.env.DEV = true
 
 function run ( filepath ) {
@@ -29,16 +23,16 @@ function run ( filepath ) {
 
 function prepareTestFiles ( next ) {
   setTimeout( function () {
-      rimraf( 'test/tmp', function () {
-          mkdirp( 'test/tmp', function ( err ) {
-              if (err) throw err
+    rimraf( 'test/tmp', function () {
+      mkdirp( 'test/tmp', function ( err ) {
+        if (err) throw err
 
-              setTimeout( function () {
-                  next()
-                  }, 150 )
-              })
-          })
-      }, 150 )
+        setTimeout( function () {
+          next()
+        }, 150 )
+      })
+    })
+  }, 150 )
 }
 
 function cleanup ( done ) {
@@ -54,9 +48,9 @@ function verifyFileCleaning ( files ) {
   }
 
   var
-      file,
-      i,
-      counter = 0
+  file,
+    i,
+    counter = 0
 
   for (i = 0; i < files.length; i++) {
     file = files[ i ]
@@ -134,8 +128,8 @@ test( 'watch a single file', function ( t ) {
       },
       function ( next ) {
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
-	  if ( err ) throw err
-  	})
+          if ( err ) throw err
+        })
       },
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = 11', next )
@@ -155,8 +149,8 @@ test( 'watch a single file', function ( t ) {
       var a = actions.shift()
       if ( a ) {
         a( function () {
-	  // setTimeout( next, ACTION_INTERVAL )
-	} )
+          // setTimeout( next, ACTION_INTERVAL )
+        } )
       } else {
         setTimeout( finish, ACTION_INTERVAL )
       }
@@ -255,8 +249,8 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
       },
       function ( next ) {
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
-	  if ( err ) throw err
-  	})
+          if ( err ) throw err
+        })
       },
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = 11', next )
@@ -277,8 +271,8 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
       var a = actions.shift()
       if ( a ) {
         a( function () {
-	  // setTimeout( next, ACTION_INTERVAL )
-	} )
+          // setTimeout( next, ACTION_INTERVAL )
+        } )
       } else {
         setTimeout( finish, ACTION_INTERVAL )
       }
@@ -380,8 +374,8 @@ test( 'watch a non-existing file', function ( t ) {
       },
       function ( next ) {
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
-	  if ( err ) throw err
-  	})
+          if ( err ) throw err
+        })
       },
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = 11', next )
@@ -394,8 +388,8 @@ test( 'watch a non-existing file', function ( t ) {
       var a = actions.shift()
       if ( a ) {
         a( function () {
-	  // setTimeout( next, ACTION_INTERVAL )
-	} )
+          // setTimeout( next, ACTION_INTERVAL )
+        } )
       } else {
         setTimeout( finish, ACTION_INTERVAL )
       }
@@ -498,8 +492,8 @@ test( 'watch a new file after init', function ( t ) {
       },
       function ( next ) {
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
-	  if ( err ) throw err
-  	})
+          if ( err ) throw err
+        })
       },
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = 11', next )
@@ -507,9 +501,9 @@ test( 'watch a new file after init', function ( t ) {
       function () {
         w.unwatch( filepath )
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
-	  if ( err ) throw err
-	  setTimeout( next, 300 )
-	} )
+          if ( err ) throw err
+          setTimeout( next, 300 )
+        } )
       },
       function ( next ) {
         w.add( filepath2 )
@@ -528,10 +522,10 @@ test( 'watch a new file after init', function ( t ) {
       var a = actions.shift()
       if ( a ) {
         a( function () {
-	  // setTimeout( next, ACTION_INTERVAL )
-	} )
+          // setTimeout( next, ACTION_INTERVAL )
+        } )
       } else {
-	setTimeout( finish, ACTION_INTERVAL )
+        setTimeout( finish, ACTION_INTERVAL )
       }
     }
 
@@ -644,8 +638,8 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
       },
       function ( next ) {
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
-	  if ( err ) throw err
-  	})
+          if ( err ) throw err
+        })
       },
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = 11', next )
@@ -653,9 +647,9 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
       function () {
         w.unwatch( filepath )
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
-	  if ( err ) throw err
-	  setTimeout( next, 300 )
-  	})
+          if ( err ) throw err
+          setTimeout( next, 300 )
+        })
       },
       function () {
         w.add( filepath2 )
@@ -669,30 +663,30 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
 
         var content = ( 'module.exports = ' + timestamp )
         fs.writeFile( filepath2, content, function ( err ) {
-	    if ( err ) {
-              t.fail( 'failed to create file' )
-	    } else {
-              t.pass( 'file was created and should be removed soon by debug flag removeAfterFSStat' )
-	      setTimeout( next, 300 )
-	    }
-	} )
+          if ( err ) {
+            t.fail( 'failed to create file' )
+          } else {
+            t.pass( 'file was created and should be removed soon by debug flag removeAfterFSStat' )
+            setTimeout( next, 300 )
+          }
+        } )
 
       },
       function ( next ) {
         fs.readFile( filepath2, function ( err ) {
-	  if ( err && err.code ) {
+          if ( err && err.code ) {
             t.equal(
               err.code,
               'ENOENT',
               'file was removed between FSStat correctly'
             )
 
-              var content = ( 'module.exports = ' + timestamp )
-              fs.writeFile( filepath2, content, next )
-	  } else {
+            var content = ( 'module.exports = ' + timestamp )
+            fs.writeFile( filepath2, content, next )
+          } else {
             t.fail( 'file was not removed correctly with debug flag removeAfterFSStat' )
-	  }
-	})
+          }
+        })
       },
       function ( next ) {
         w.add( filepath )
@@ -706,10 +700,10 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
       var a = actions.shift()
       if ( a ) {
         a( function () {
-	  // setTimeout( next, ACTION_INTERVAL )
-	} )
+          // setTimeout( next, ACTION_INTERVAL )
+        } )
       } else {
-	setTimeout( finish, ACTION_INTERVAL )
+        setTimeout( finish, ACTION_INTERVAL )
       }
     }
 

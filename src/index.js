@@ -12,13 +12,7 @@ var ALWAYS_COMPARE_FILECONTENT = false
 var MAX_ATTEMPTS = 5
 var ATTEMPT_INTERVAL = 10 // milliseconds
 
-var SUPER_TESTING_SPEED_OVERRIDE = false
-if ( !!process.env.MITERU_SUPER_TESTING_SPEED_OVERRIDE ) SUPER_TESTING_SPEED_OVERRIDE = true
-
-
 var TRIGGER_INTERVAL = 0
-if ( SUPER_TESTING_SPEED_OVERRIDE ) TRIGGER_INTERVAL = 0
-TRIGGER_INTERVAL = 0
 
 // some file systems round up to the nearest full second (e.g. OSX)
 // for file mtime, atime, ctime etc -- so in order to account for
@@ -386,13 +380,6 @@ function schedulePoll ( fw, forcedInterval ) {
     interval = 1
   }
 
-  if ( SUPER_TESTING_SPEED_OVERRIDE ) {
-    interval = Math.min(
-      interval,
-      5
-    )
-  }
-
   if ( fw.timeout !== undefined ) throw new Error( 'fw.timeout already in progress' )
 
   clearTimeout( fw.timeout )
@@ -562,7 +549,7 @@ function pollFile ( fw ) {
           getEnv( 'DEV' ) && console.log( 'read file contents: ' + fileContent.toString( 'utf8' ) )
         } catch ( err ) {
           switch ( err.code ) {
-	    case 'EPERM':
+            case 'EPERM':
             case 'ENOENT':
               fw.attempts++
               // possibly if file is removed between a succesful fs.stat
@@ -703,8 +690,8 @@ function pollFile ( fw ) {
           trigger( fw, 'change' )
         } else {
           // fire away events ( add, change ) when file is stable
-	  fireTrigger( fw )
-	}
+          fireTrigger( fw )
+        }
 
         getEnv( 'DEV' ) && console.log( ' == 11 == ' )
       } else {
@@ -721,7 +708,7 @@ function pollFile ( fw ) {
             .replace( '$4', fw.filepath )
           )
           trigger( fw, 'init' )
-	  fireTrigger( fw ) // init is safe to fire straight away
+          fireTrigger( fw ) // init is safe to fire straight away
         } else {
           DEBUG.EVT && log( 'add: ' + fw.filepath )
           getEnv( 'DEV' ) && console.log(
@@ -816,12 +803,12 @@ function fireTrigger ( fw ) {
       if ( typeof fw.watcher.callback === 'function' ) {
         fw.watcher.callback( evt, fw.filepath )
       }
-  
+
       var evtCallbacks = fw.watcher.evtCallbacks[ evt ] || []
       evtCallbacks.forEach( function ( evtCallback ) {
         return evtCallback( fw.filepath, stats )
       } )
-  
+
     }, TRIGGER_INTERVAL )
   }
 }
@@ -834,8 +821,8 @@ function trigger ( fw, evt ) {
     if ( fw._eventReadyToFire ) {
       console.log(
         'unfired triggered overriden with new [$1] -> [$2]'
-         .replace( '$1', fw._eventReadyToFire )
-         .replace( '$2', evt )
+        .replace( '$1', fw._eventReadyToFire )
+        .replace( '$2', evt )
       )
     }
   }
