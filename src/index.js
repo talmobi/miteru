@@ -10,7 +10,7 @@ var minimatch = require('minimatch')
 var ALWAYS_COMPARE_FILECONTENT = false
 
 var MAX_ATTEMPTS = 5
-var ATTEMPT_INTERVAL = 5 // milliseconds
+var ATTEMPT_INTERVAL = 10 // milliseconds
 
 var SUPER_TESTING_SPEED_OVERRIDE = false
 if ( !!process.env.MITERU_SUPER_TESTING_SPEED_OVERRIDE ) SUPER_TESTING_SPEED_OVERRIDE = true
@@ -18,6 +18,7 @@ if ( !!process.env.MITERU_SUPER_TESTING_SPEED_OVERRIDE ) SUPER_TESTING_SPEED_OVE
 
 var TRIGGER_INTERVAL = 0
 if ( SUPER_TESTING_SPEED_OVERRIDE ) TRIGGER_INTERVAL = 0
+TRIGGER_INTERVAL = 0
 
 // some file systems round up to the nearest full second (e.g. OSX)
 // for file mtime, atime, ctime etc -- so in order to account for
@@ -315,6 +316,8 @@ function watchFile ( watcher, file, initFlagged ) {
       fw.initFlagged = true
     }
 
+    fw.exists = false
+
     watcher.files[ filepath ] = fw
   }
 }
@@ -377,6 +380,12 @@ function schedulePoll ( fw, forcedInterval ) {
 
   if ( forcedInterval !== undefined ) interval = forcedInterval
 
+  // event is ready to be fired, FIRE FIRE FIRE!!! :D
+  if ( fw._eventReadyToFire ) {
+    console.log( ' events are ready to fire, polling ASAP!' )
+    interval = 1
+  }
+
   if ( SUPER_TESTING_SPEED_OVERRIDE ) {
     interval = Math.min(
       interval,
@@ -387,7 +396,7 @@ function schedulePoll ( fw, forcedInterval ) {
   if ( fw.timeout !== undefined ) throw new Error( 'fw.timeout already in progress' )
 
   clearTimeout( fw.timeout )
-  fw.timeout = setTimeout(function () {
+  fw.timeout = setTimeout( function () {
     fw.timeout = undefined
     pollFile( fw )
   }, interval )
@@ -553,6 +562,7 @@ function pollFile ( fw ) {
           getEnv( 'DEV' ) && console.log( 'read file contents: ' + fileContent.toString( 'utf8' ) )
         } catch ( err ) {
           switch ( err.code ) {
+	    case 'EPERM':
             case 'ENOENT':
               fw.attempts++
               // possibly if file is removed between a succesful fs.stat
@@ -691,7 +701,10 @@ function pollFile ( fw ) {
           )
 
           trigger( fw, 'change' )
-        }
+        } else {
+          // fire away events ( add, change ) when file is stable
+	  fireTrigger( fw )
+	}
 
         getEnv( 'DEV' ) && console.log( ' == 11 == ' )
       } else {
@@ -708,6 +721,7 @@ function pollFile ( fw ) {
             .replace( '$4', fw.filepath )
           )
           trigger( fw, 'init' )
+	  fireTrigger( fw ) // init is safe to fire straight away
         } else {
           DEBUG.EVT && log( 'add: ' + fw.filepath )
           getEnv( 'DEV' ) && console.log(
@@ -778,6 +792,9 @@ function handleFSStatError ( fw ) {
     // for this file did it exist or not
     fw.initFlagged = false
 
+    // fire away events ( unlink ) when file is stable
+    fireTrigger( fw )
+
     // file didn't exist previously so it's safe to assume
     // it still doesn't and isn't supposed to exist
     // schedule next poll normally
@@ -786,50 +803,44 @@ function handleFSStatError ( fw ) {
   }
 }
 
-function trigger ( fw, evt ) {
-  // console.log( 'TRIGGERING: ' + evt + ' - ' + fw.filepath )
+function fireTrigger ( fw ) {
+  if ( fw._eventReadyToFire ) {
+    var evt = fw._eventReadyToFire
+    fw._eventReadyToFire= undefined
 
-  if ( typeof fw.watcher.callback !== 'function' ) {
-    // throw new Error( 'no callback function provided for watcher instance' )
+    clearTimeout( fw.triggerTimeout )
+    fw.triggerTimeout = setTimeout( function () {
+
+      fw._awake = true
+
+      if ( typeof fw.watcher.callback === 'function' ) {
+        fw.watcher.callback( evt, fw.filepath )
+      }
+  
+      var evtCallbacks = fw.watcher.evtCallbacks[ evt ] || []
+      evtCallbacks.forEach( function ( evtCallback ) {
+        return evtCallback( fw.filepath, stats )
+      } )
+  
+    }, TRIGGER_INTERVAL )
+  }
+}
+
+function trigger ( fw, evt ) {
+  // do not overwrite with 'change' events
+  if ( fw._eventReadyToFire && evt === 'change' ) return undefined
+
+  if ( getEnv( 'DEV' ) ) {
+    if ( fw._eventReadyToFire ) {
+      console.log(
+        'unfired triggered overriden with new [$1] -> [$2]'
+         .replace( '$1', fw._eventReadyToFire )
+         .replace( '$2', evt )
+      )
+    }
   }
 
-  clearTimeout( fw.triggerTimeout )
-  fw.triggerTimeout = setTimeout( function () {
-
-    fw._awake = true
-    if ( typeof fw.watcher.callback === 'function' ) {
-      fw.watcher.callback( evt, fw.filepath )
-    }
-
-    var evtCallbacks = fw.watcher.evtCallbacks[ evt ] || []
-    evtCallbacks.forEach( function ( evtCallback ) {
-      return evtCallback( fw.filepath, stats )
-
-      var skipped = false
-
-      try {
-        var stats = fs.statSync( fw.filepath )
-
-        var sizeChanged = ( stats.size !== fw.size )
-        var mtimeChanged = ( stats.mtime > fw.mtime )
-
-        if ( !sizeChanged && !mtimeChanged ) {
-          evtCallback( fw.filepath, stats )
-        } else {
-          skipped = true
-        }
-
-      } catch ( err ) {
-        // ignore ( handled by next poll )
-        skipped = true
-      }
-
-      if ( skipped ) {
-        console.log( ' === SKIPPED: ' + evt + ' - ' + fw.filepath )
-      }
-    } )
-
-  }, TRIGGER_INTERVAL )
+  fw._eventReadyToFire = evt
 }
 
 function setFileContent ( fw, content ) {

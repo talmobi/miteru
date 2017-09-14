@@ -8,7 +8,7 @@
   },
   "scripts": {
     "t": "node test/test.js | tap-bail | tap-spec",
-    "st": "MITERU_SUPER_TESTING_SPEED_OVERRIDE=true node test/test.js | tap-bail | tap-spec",
+    "st": "node test/test.js | tap-bail | tap-spec",
     "tloop": "while npm run t -s; do :; done",
     "stloop": "while npm run st -s; do :; done",
     "test": "npm run st"
