@@ -376,8 +376,8 @@ function schedulePoll ( fw, forcedInterval ) {
 
   // event is ready to be fired, FIRE FIRE FIRE!!! :D
   if ( fw._eventReadyToFire ) {
-    console.log( ' events are ready to fire, polling ASAP!' )
-    interval = 1
+    // console.log( ' events are ready to fire, polling ASAP!' )
+    interval = 1 // poll ASAP ( if the next poll is unchaged aka "stable", we fire the pending event
   }
 
   if ( fw.timeout !== undefined ) throw new Error( 'fw.timeout already in progress' )
@@ -687,10 +687,10 @@ function pollFile ( fw ) {
             .replace( '$4', fw.filepath )
           )
 
-          trigger( fw, 'change' )
+          loadEvent( fw, 'change' )
         } else {
           // fire away events ( add, change ) when file is stable
-          fireTrigger( fw )
+          dispatchPendingEvent( fw )
         }
 
         getEnv( 'DEV' ) && console.log( ' == 11 == ' )
@@ -707,8 +707,8 @@ function pollFile ( fw ) {
             .replace( '$3', fileContentHasChanged )
             .replace( '$4', fw.filepath )
           )
-          trigger( fw, 'init' )
-          fireTrigger( fw ) // init is safe to fire straight away
+          loadEvent( fw, 'init' )
+          dispatchPendingEvent( fw ) // init is safe to fire straight away
         } else {
           DEBUG.EVT && log( 'add: ' + fw.filepath )
           getEnv( 'DEV' ) && console.log(
@@ -718,7 +718,7 @@ function pollFile ( fw ) {
             .replace( '$3', fileContentHasChanged )
             .replace( '$4', fw.filepath )
           )
-          trigger( fw, 'add' )
+          loadEvent( fw, 'add' )
         }
 
         getEnv( 'DEV' ) && console.log( ' == 13 == ' )
@@ -764,7 +764,7 @@ function handleFSStatError ( fw ) {
         'unlink evt -- [$4]'
         .replace( '$4', fw.filepath )
       )
-      trigger( fw, 'unlink' )
+      loadEvent( fw, 'unlink' )
 
       // schedule next poll
       unlockFile( fw )
@@ -780,7 +780,7 @@ function handleFSStatError ( fw ) {
     fw.initFlagged = false
 
     // fire away events ( unlink ) when file is stable
-    fireTrigger( fw )
+    dispatchPendingEvent( fw )
 
     // file didn't exist previously so it's safe to assume
     // it still doesn't and isn't supposed to exist
@@ -790,7 +790,7 @@ function handleFSStatError ( fw ) {
   }
 }
 
-function fireTrigger ( fw ) {
+function dispatchPendingEvent ( fw ) {
   if ( fw._eventReadyToFire ) {
     var evt = fw._eventReadyToFire
     fw._eventReadyToFire= undefined
@@ -813,7 +813,7 @@ function fireTrigger ( fw ) {
   }
 }
 
-function trigger ( fw, evt ) {
+function loadEvent ( fw, evt ) {
   // do not overwrite with 'change' events
   if ( fw._eventReadyToFire && evt === 'change' ) return undefined
 
