@@ -11,7 +11,7 @@ var miteru = require('../src/index.js')
 
 var test = require('tape')
 
-var ACTION_INTERVAL = 100
+var ACTION_INTERVAL = 300
 
 // process.env.DEV = true
 
@@ -65,7 +65,7 @@ function verifyFileCleaning ( files ) {
 }
 
 test( 'watch a single file', function ( t ) {
-  t.timeoutAfter( 6000 )
+  t.timeoutAfter( 7500 )
 
   prepareTestFiles(function () {
     var filepath = path.join( __dirname, 'tmp', 'main.js' )
@@ -118,7 +118,7 @@ test( 'watch a single file', function ( t ) {
           break
       }
 
-      console.log( 'evt: ' + evt )
+      // console.log( 'evt: ' + evt )
       next()
     })
 
@@ -187,7 +187,7 @@ test( 'watch a single file', function ( t ) {
 })
 
 test( 'watch a single file -- file content appended between FSStat:ing', function ( t ) {
-  t.timeoutAfter( 6000 )
+  t.timeoutAfter( 7500 )
 
   prepareTestFiles(function () {
     var filepath = path.join( __dirname, 'tmp', 'main.js' )
@@ -309,7 +309,7 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
 })
 
 test( 'watch a non-existing file', function ( t ) {
-  t.timeoutAfter( 6000 )
+  t.timeoutAfter( 7500 )
 
   prepareTestFiles(function () {
     var filepath = path.join( __dirname, 'tmp', 'blabla.js' )
@@ -426,7 +426,7 @@ test( 'watch a non-existing file', function ( t ) {
 })
 
 test( 'watch a new file after init', function ( t ) {
-  t.timeoutAfter( 6000 )
+  t.timeoutAfter( 7500 )
 
   prepareTestFiles(function () {
     var filepath = path.join( __dirname, 'tmp', 'filepath.js' )
@@ -571,7 +571,7 @@ test( 'watch a new file after init', function ( t ) {
 })
 
 test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
-  t.timeoutAfter( 6000 )
+  t.timeoutAfter( 7500 )
 
   prepareTestFiles(function () {
     var filepath = path.join( __dirname, 'tmp', 'filepath.js' )
@@ -628,7 +628,7 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
           break
       }
 
-      console.log( 'evt: ' + evt )
+      // console.log( 'evt: ' + evt )
       next()
     })
 
@@ -755,7 +755,7 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
 })
 
 test( 'exit process after watcher is closed', function ( t ) {
-  t.timeoutAfter( 6000 )
+  t.timeoutAfter( 7500 )
 
   process.env.DEV = false
 
@@ -792,7 +792,7 @@ test( 'exit process after watcher is closed', function ( t ) {
       try {
         spawn.kill()
       } catch ( err ) {}
-    }, 6000)
+    }, 7500)
 
     var spawn = childProcess.spawn('node', [
       path.join( __dirname, 'test-close.js' )
@@ -829,7 +829,7 @@ test( 'exit process after watcher is closed', function ( t ) {
 })
 
 test( 'process exits when no files being watched', function ( t ) {
-  t.timeoutAfter( 6000 )
+  t.timeoutAfter( 7500 )
 
   prepareTestFiles(function () {
     var filepath = path.join( __dirname, 'tmp', 'unwatch.js' )
@@ -879,7 +879,7 @@ test( 'process exits when no files being watched', function ( t ) {
       if ( !_exited ) t.fail( 'spawn failed to exit on its own' )
       var _killed = true
       spawn.kill()
-    }, 6000)
+    }, 7500)
 
     spawn.on( 'exit', function ( code ) {
       t.equal( _killed, false, 'spawn was not killed' )
