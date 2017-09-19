@@ -2,16 +2,16 @@
   "name": "miteru",
   "version": "0.0.3",
   "description": "simple file watcher",
-  "main": "miteru.js",
+  "main": "src/miteru.js",
   "bin": {
     "miteru": "./cli.js"
   },
+  "files": [
+    "src/index.js"
+  ],
   "scripts": {
-    "t": "node test/test.js | tap-bail | tap-spec",
-    "st": "node test/test.js | tap-bail | tap-spec",
-    "tloop": "while npm run t -s; do :; done",
-    "stloop": "while npm run st -s; do :; done",
-    "test": "npm run st"
+    "lint": "spacestandard --fix src/**/*.js",
+    "test": "node test/test.js | tap-bail | tap-spec"
   },
   "keywords": [
     "miteru"
@@ -35,6 +35,7 @@
     "mkdirp": "^0.5.1",
     "ncp": "^2.0.0",
     "rimraf": "^2.6.1",
+    "spacestandard": "0.0.6",
     "tap-bail": "^1.0.0",
     "tap-spec": "^4.1.1",
     "tape": "^4.6.3"
