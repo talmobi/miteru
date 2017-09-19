@@ -86,21 +86,26 @@ function exec (cmd) {
 }
 
 watcher.callback = function ( evt, filepath ) {
+  var timestring = ( new Date() ).toTimeString().split( ' ' )[ 0 ]
+  console.log( '   - ' + ( timestring ) + ' -   ')
   switch ( evt ) {
+    case 'init':
+      console.log('CLI: init at: ' + filepath)
+      break
+
     case 'unlink':
       console.log('CLI: unlink at: ' + filepath)
       break
+
     case 'add':
       console.log('CLI: add at: ' + filepath)
       break
+
     case 'change':
       var cmd = argv.e
       console.log('CLI: change at: ' + filepath)
       if ( cmd ) {
         exec( cmd )
-      } else {
-        // console.log()
-        console.log('(no command argument ([-e, --execute] <command string>) supplied -- doing nothing')
       }
       break
   }
