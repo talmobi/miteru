@@ -12,7 +12,7 @@ var ALWAYS_COMPARE_FILECONTENT = false
 var MAX_ATTEMPTS = 5
 var ATTEMPT_INTERVAL = 10 // milliseconds
 
-var TRIGGER_INTERVAL = 0
+var TRIGGER_DELAY = 0
 
 // some file systems round up to the nearest full second (e.g. OSX)
 // for file mtime, atime, ctime etc -- so in order to account for
@@ -366,6 +366,9 @@ function schedulePoll ( fw, forcedInterval ) {
   )
 
   // if fw is not awake then cap the polling interval
+  // this prevents recently modified/created files prior to watching
+  // from being considered as HOT FILES, i.e., files that are
+  // actively being modified
   if ( !fw._awake ) {
     if ( interval < TEMPERATURE.DORMANT_INTERVAL ) {
       interval = TEMPERATURE.DORMANT_INTERVAL
@@ -431,11 +434,18 @@ function pollFile ( fw ) {
       }
     } else { // no error
 
-      if ( !stats.size ) {
+      if ( !stats.size && ( fw.size !== stats.size ) ) {
         getEnv( 'DEV' ) && console.log( ' ============ size was falsy: ' + stats.size )
-
-        // handle as ENOENT error
-        return handleFSStatError( fw )
+        if ( fw.attempts < MAX_ATTEMPTS ) {
+          // handle as an unreliable ENOENT error, i.e., increment
+          // error counter but this event alone cannot consider the file
+          // non-existent -- it's a good indication that the file will be
+          return handleFSStatError( fw, 'unreliable' )
+        } else {
+          // if we've exceeded attempts then assume the file exists
+          // and it's intentionally empty ( of size 0 )
+          getEnv( 'DEV' ) && console.log( ' consider file empty ' )
+        }
       }
 
       getEnv( 'DEV' ) && console.log( ' == fs.stat OK == ' )
@@ -659,6 +669,8 @@ function pollFile ( fw ) {
       fw.size = stats.size
       fw.mtime = stats.mtime
 
+      fw._stats = stats // remember stats object
+
       getEnv( 'DEV' ) && console.log( ' == 7 == ' )
 
       // change the polling interval dynamically
@@ -730,8 +742,9 @@ function pollFile ( fw ) {
   }
 }
 
-function handleFSStatError ( fw ) {
+function handleFSStatError ( fw, info ) {
   var existedPreviously = ( fw.exists === true )
+  var unreliable = ( info === 'unreliable' )
 
   if ( existedPreviously || fw.initFlagged ) {
     // file existed previously, assume that it should still
@@ -741,7 +754,8 @@ function handleFSStatError ( fw ) {
     // [*] within (MAX_ATTEMPTS * ATTEMPT_INTERVAL) milliseconds
     fw.attempts = ( fw.attempts || 0 ) + 1 // increment attempts
 
-    if ( fw.attempts > MAX_ATTEMPTS ) { // MAX_ATTEMPTS exceeded
+    // MAX_ATTEMPTS exceeded and not uncertain error event type
+    if ( fw.attempts > MAX_ATTEMPTS && ( unreliable === false ) ) {
       // after a number of failed attempts
       // consider the file truly non-existent
       fw.exists = false
@@ -793,23 +807,22 @@ function handleFSStatError ( fw ) {
 function dispatchPendingEvent ( fw ) {
   if ( fw._eventReadyToFire ) {
     var evt = fw._eventReadyToFire
-    fw._eventReadyToFire= undefined
+    fw._eventReadyToFire = undefined
 
     clearTimeout( fw.triggerTimeout )
     fw.triggerTimeout = setTimeout( function () {
-
       fw._awake = true
 
       if ( typeof fw.watcher.callback === 'function' ) {
-        fw.watcher.callback( evt, fw.filepath )
+        fw.watcher.callback( evt, fw.filepath, fw._stats )
       }
 
       var evtCallbacks = fw.watcher.evtCallbacks[ evt ] || []
       evtCallbacks.forEach( function ( evtCallback ) {
-        return evtCallback( fw.filepath, stats )
+        return evtCallback( fw.filepath, fw._stats )
       } )
 
-    }, TRIGGER_INTERVAL )
+    }, TRIGGER_DELAY )
   }
 }
 
