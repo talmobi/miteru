@@ -7,6 +7,7 @@
     "miteru": "./cli.js"
   },
   "files": [
+    "cli.js",
     "src/index.js"
   ],
   "scripts": {
