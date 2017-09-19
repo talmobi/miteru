@@ -1,11 +1,11 @@
 // var rimraf = require('rimfraf')
 // rimraf.sync('tmp')
 
-var fs = require('fs')
-var path = require('path')
+var fs = require( 'fs' )
+var path = require( 'path' )
 
-var glob = require('glob')
-var minimatch = require('minimatch')
+var glob = require( 'glob' )
+var minimatch = require( 'minimatch' )
 
 var ALWAYS_COMPARE_FILECONTENT = false
 
@@ -21,24 +21,24 @@ var TRIGGER_DELAY = 0
 var EDGE_CASE_INTERVAL = 1000 // milliseconds
 
 // diffing HUGE files hurts the soul so we cap it at a reasonable (TM) size..
-var EDGE_CASE_MAX_SIZE = (1024 * 1024 * 10) // 15mb
+var EDGE_CASE_MAX_SIZE = ( 1024 * 1024 * 10 ) // 15mb
 
 // polling interval intensities based on delta time ( time since last change )
 var TEMPERATURE = {
   HOT: {
-    AGE: (1000 * 60 * 5), // 5 min
+    AGE: ( 1000 * 60 * 5 ), // 5 min
     INTERVAL: 25
   },
   SEMI_HOT: {
-    AGE: (1000 * 60 * 15), // 15 min
+    AGE: ( 1000 * 60 * 15 ), // 15 min
     INTERVAL: 25 * 3 // 75
   },
   WARM: {
-    AGE: (1000 * 60 * 60), // 60 min
+    AGE: ( 1000 * 60 * 60 ), // 60 min
     INTERVAL: 25 * 7 // 175
   },
   COLD: {
-    AGE: (1000 * 60 * 60 * 3), // 3 hours
+    AGE: ( 1000 * 60 * 60 * 3 ), // 3 hours
     INTERVAL: 25 * 15 // 375
   },
   COLDEST_INTERVAL: 25 * 31, // 775
@@ -48,7 +48,7 @@ var TEMPERATURE = {
 var DEBUG = {
   FILE: true,
   LOG: true,
-  EVT: true,
+  EVT: true
 }
 
 DEBUG = {
@@ -67,14 +67,14 @@ switch ( ( process.env.MITERU_LOGLEVEL || '' ).toLowerCase() ) {
 
   case 'temp':
   case 'temperature':
-    var DEBUG = {
+    DEBUG = {
       TEMPERATURE: true
     }
     break
 
   case 'full':
   case 'all':
-    var DEBUG = {
+    DEBUG = {
       TEMPERATURE: true,
       ENOENT: true,
       FILE: true,
@@ -128,18 +128,18 @@ var _watchers = []
 var _running = true
 
 // cleanup
-process.on('exit', function () {
+process.on( 'exit', function () {
   _running = false
-  _watchers.forEach(function ( watcher ) {
+  _watchers.forEach( function ( watcher ) {
     Object.keys( watcher.files )
-      .forEach(function ( filepath ) {
+      .forEach( function ( filepath ) {
         unwatchFile( watcher, filepath )
         // var fw = watcher.files[ filepath ]
         // fw.close()
         // delete watcher.files[ fw.filepath ]
-      })
-  })
-})
+      } )
+  } )
+} )
 
 var api = module.exports = {}
 
@@ -155,9 +155,9 @@ api.watch = function watch ( file, callback ) {
   _watchers.push( watcher )
 
   var initFlagged = true
-  process.nextTick(function () {
+  process.nextTick( function () {
     initFlagged = false
-  })
+  } )
 
   watcher.add = function ( file ) {
     var isPattern = glob.hasMagic( file )
@@ -166,10 +166,12 @@ api.watch = function watch ( file, callback ) {
       // is glob pattern for zero or multiple files
       var pattern = file
       glob( pattern, function ( err, files ) {
-        files.forEach(function ( file ) {
+        if ( err ) throw err
+
+        files.forEach( function ( file ) {
           watchFile( watcher, file, initFlagged )
-        })
-      })
+        } )
+      } )
     } else {
       // is a single file path
       watchFile( watcher, file, initFlagged )
@@ -198,7 +200,7 @@ api.watch = function watch ( file, callback ) {
 
     if ( !fw ) {
       throw new Error(
-        'no fileWatcher for [$1] found'.replace( '$1' , filepath)
+        'no fileWatcher for [$1] found'.replace( '$1', filepath )
       )
     } else {
       fw._debug = fw._debug || {}
@@ -215,12 +217,12 @@ api.watch = function watch ( file, callback ) {
 
       var files = Object.keys( watcher.files )
 
-      files.forEach(function ( file ) {
+      files.forEach( function ( file ) {
         var shouldRemove = minimatch( file, pattern )
         if ( shouldRemove ) {
           unwatchFile( watcher, file )
         }
-      })
+      } )
     } else {
       // is a single file path
       unwatchFile( watcher, file )
@@ -246,18 +248,18 @@ api.watch = function watch ( file, callback ) {
     var fw = watcher.files[ filepath ]
     var o = {}
 
-    Object.keys( fw.log ).forEach(function ( key ) {
+    Object.keys( fw.log ).forEach( function ( key ) {
       o[ key ] = fw.log[ key ]
-    })
+    } )
 
     return o
   }
 
   watcher.close = function () {
-    Object.keys( watcher.files ).forEach(function ( filepath ) {
+    Object.keys( watcher.files ).forEach( function ( filepath ) {
       var fw = watcher.files[ filepath ]
       fw.close()
-    })
+    } )
 
     // JavaScript functions return 'undefined' by default -- but
     // explicitly writing it here as it is intended
@@ -285,7 +287,7 @@ api.watch = function watch ( file, callback ) {
         if ( f && typeof f === 'string' ) {
           watcher.add( file )
         }
-      })
+      } )
     }
   }
 
@@ -302,7 +304,7 @@ function watchFile ( watcher, file, initFlagged ) {
     DEBUG.LOG && log( '(ignored) file already being watched' )
   } else {
     // add new file watcher
-    var fw = createFileWatcher( watcher, filepath )
+    fw = createFileWatcher( watcher, filepath )
 
     // initFlagged indicates that this file was added to the watch list
     // during the same tick (nodejs process tick)
@@ -393,6 +395,8 @@ function schedulePoll ( fw, forcedInterval ) {
 }
 
 function pollFile ( fw ) {
+  if ( !_running ) return undefined
+
   if ( fw.closed ) throw new Error( 'fw is closed' )
 
   if ( fw.locked ) throw new Error( 'fw is locked' )
@@ -433,7 +437,6 @@ function pollFile ( fw ) {
         default: throw err
       }
     } else { // no error
-
       if ( !stats.size && ( fw.size !== stats.size ) ) {
         getEnv( 'DEV' ) && console.log( ' ============ size was falsy: ' + stats.size )
         if ( fw.attempts < MAX_ATTEMPTS ) {
@@ -522,7 +525,7 @@ function pollFile ( fw ) {
         shouldCompareFileContents = true
       }
 
-      var fileContentHasChanged = undefined
+      var fileContentHasChanged
 
       var shouldReadFileContents = (
         !existedPreviously ||
@@ -543,7 +546,6 @@ function pollFile ( fw ) {
 
       // only fs.readFileSync fileContent if necessary
       if ( shouldReadFileContents ) {
-
         try {
           // NOTE
           // there's a caveat here that fs.stat and fs.readFileSync
@@ -572,12 +574,11 @@ function pollFile ( fw ) {
                 ( fw.log[ 'FSStatReadFileSyncErrors' ] || 0 ) + 1
               )
 
-              return process.nextTick(function () {
+              return process.nextTick( function () {
                 unlockFile( fw )
                 schedulePoll( fw, ATTEMPT_INTERVAL )
                 // pollFile( fw )
-              })
-              break
+              } )
 
             default:
               console.error( 'Error between fs.stat and fs.readFileSync' )
@@ -654,8 +655,8 @@ function pollFile ( fw ) {
         if ( stats.size !== fileContent.length ) {
           getEnv( 'DEV' ) && console.log(
             '  updated stats.size -- was: $was, is: $is'
-            .replace( '$was', stats.size )
-            .replace( '$is', fileContent.length )
+              .replace( '$was', stats.size )
+              .replace( '$is', fileContent.length )
           )
           stats.size = fileContent.length
         }
@@ -693,10 +694,10 @@ function pollFile ( fw ) {
           DEBUG.EVT && log( 'change: ' + fw.filepath )
           getEnv( 'DEV' ) && console.log(
             'change evt --  size $1, mtime $2, fileContent $3: [$4]'
-            .replace( '$1', sizeChanged )
-            .replace( '$2', mtimeChanged )
-            .replace( '$3', fileContentHasChanged )
-            .replace( '$4', fw.filepath )
+              .replace( '$1', sizeChanged )
+              .replace( '$2', mtimeChanged )
+              .replace( '$3', fileContentHasChanged )
+              .replace( '$4', fw.filepath )
           )
 
           loadEvent( fw, 'change' )
@@ -714,10 +715,10 @@ function pollFile ( fw ) {
           DEBUG.EVT && log( 'init: ' + fw.filepath )
           getEnv( 'DEV' ) && console.log(
             'init evt -- size $1, mtime $2, fileContent $3: [$4]'
-            .replace( '$1', sizeChanged )
-            .replace( '$2', mtimeChanged )
-            .replace( '$3', fileContentHasChanged )
-            .replace( '$4', fw.filepath )
+              .replace( '$1', sizeChanged )
+              .replace( '$2', mtimeChanged )
+              .replace( '$3', fileContentHasChanged )
+              .replace( '$4', fw.filepath )
           )
           loadEvent( fw, 'init' )
           dispatchPendingEvent( fw ) // init is safe to fire straight away
@@ -725,10 +726,10 @@ function pollFile ( fw ) {
           DEBUG.EVT && log( 'add: ' + fw.filepath )
           getEnv( 'DEV' ) && console.log(
             'add evt -- size $1, mtime $2, fileContent $3: [$4]'
-            .replace( '$1', sizeChanged )
-            .replace( '$2', mtimeChanged )
-            .replace( '$3', fileContentHasChanged )
-            .replace( '$4', fw.filepath )
+              .replace( '$1', sizeChanged )
+              .replace( '$2', mtimeChanged )
+              .replace( '$3', fileContentHasChanged )
+              .replace( '$4', fw.filepath )
           )
           loadEvent( fw, 'add' )
         }
@@ -736,10 +737,7 @@ function pollFile ( fw ) {
         getEnv( 'DEV' ) && console.log( ' == 13 == ' )
       }
     }
-  })
-
-  function finish () {
-  }
+  } )
 }
 
 function handleFSStatError ( fw, info ) {
@@ -776,7 +774,7 @@ function handleFSStatError ( fw, info ) {
       DEBUG.EVT && log( 'unlink: ' + fw.filepath )
       getEnv( 'DEV' ) && console.log(
         'unlink evt -- [$4]'
-        .replace( '$4', fw.filepath )
+          .replace( '$4', fw.filepath )
       )
       loadEvent( fw, 'unlink' )
 
@@ -786,7 +784,7 @@ function handleFSStatError ( fw, info ) {
     } else {
       // schedule next poll faster than normal ( ATTEMPT_INTERVAL )
       unlockFile( fw )
-      schedulePoll( fw, ATTEMPT_INTERVAL)
+      schedulePoll( fw, ATTEMPT_INTERVAL )
     }
   } else {
     // in any case the init phase has ended
@@ -821,7 +819,6 @@ function dispatchPendingEvent ( fw ) {
       evtCallbacks.forEach( function ( evtCallback ) {
         return evtCallback( fw.filepath, fw._stats )
       } )
-
     }, TRIGGER_DELAY )
   }
 }
@@ -834,8 +831,8 @@ function loadEvent ( fw, evt ) {
     if ( fw._eventReadyToFire ) {
       console.log(
         'unfired triggered overriden with new [$1] -> [$2]'
-        .replace( '$1', fw._eventReadyToFire )
-        .replace( '$2', evt )
+          .replace( '$1', fw._eventReadyToFire )
+          .replace( '$2', evt )
       )
     }
   }
@@ -848,9 +845,9 @@ function setFileContent ( fw, content ) {
 
   // clear fileContent once EDGE_CASE_INTERVAL is no longer relevant
   clearTimeout( fw.fileContentTimeout )
-  fw.fileContentTimeout = setTimeout(function () {
+  fw.fileContentTimeout = setTimeout( function () {
     delete fw.fileContent
-  }, EDGE_CASE_INTERVAL)
+  }, EDGE_CASE_INTERVAL )
 }
 
 // function updateStats ( fw, stats ) {
@@ -867,7 +864,7 @@ function updatePollingInterval ( fw ) {
   // }
 
   if ( fw.type !== 'file' ) {
-    throw new Error( 'trying to update pollInterval on non-file type [' + w.type + ']' )
+    throw new Error( 'trying to update pollInterval on non-file type [' + fw.type + ']' )
   }
 
   var now = Date.now()
