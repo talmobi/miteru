@@ -1,15 +1,15 @@
-var rimraf = require('rimraf')
-var mkdirp = require('mkdirp')
-var ncp = require('ncp').ncp
+var rimraf = require( 'rimraf' )
+var mkdirp = require( 'mkdirp' )
+var ncp = require( 'ncp' ).ncp
 
-var fs = require('fs')
-var path = require('path')
+var fs = require( 'fs' )
+var path = require( 'path' )
 
-var childProcess = require('child_process')
+var childProcess = require( 'child_process' )
 
-var miteru = require('../src/index.js')
+var miteru = require( '../src/index.js' )
 
-var test = require('tape')
+var test = require( 'tape' )
 
 var ACTION_INTERVAL = 300
 
@@ -25,21 +25,21 @@ function prepareTestFiles ( next ) {
   setTimeout( function () {
     rimraf( 'test/tmp', function () {
       mkdirp( 'test/tmp', function ( err ) {
-        if (err) throw err
+        if ( err ) throw err
 
         setTimeout( function () {
           next()
         }, 150 )
-      })
-    })
+      } )
+    } )
   }, 150 )
 }
 
 function cleanup ( done ) {
   rimraf( './test/tmp', function ( err ) {
-    if (err) throw err
+    if ( err ) throw err
     done()
-  })
+  } )
 }
 
 function verifyFileCleaning ( files ) {
@@ -48,11 +48,11 @@ function verifyFileCleaning ( files ) {
   }
 
   var
-  file,
+    file,
     i,
     counter = 0
 
-  for (i = 0; i < files.length; i++) {
+  for ( i = 0; i < files.length; i++ ) {
     file = files[ i ]
     try {
       fs.readFileSync()
@@ -67,20 +67,20 @@ function verifyFileCleaning ( files ) {
 test( 'watch a single file', function ( t ) {
   t.timeoutAfter( 7500 )
 
-  prepareTestFiles(function () {
+  prepareTestFiles( function () {
     var filepath = path.join( __dirname, 'tmp', 'main.js' )
 
     var expected = [
-      ''
-      , 'init: abra'
-      , 'change: 88'
-      , 'unlink: ' + filepath
-      , 'add: 11'
-      , 'change: kadabra'
-      , 'change: allakhazam'
+      '',
+      'init: abra',
+      'change: 88',
+      'unlink: ' + filepath,
+      'add: 11',
+      'change: kadabra',
+      'change: allakhazam'
     ]
 
-    var buffer = ['']
+    var buffer = [ '' ]
 
     t.ok(
       verifyFileCleaning(
@@ -96,7 +96,7 @@ test( 'watch a single file', function ( t ) {
     var w = miteru.watch( filepath, function ( evt, filepath ) {
       switch ( evt ) {
         case 'init':
-          buffer.push( 'init: ' + run( filepath ))
+          buffer.push( 'init: ' + run( filepath ) )
           break
 
         case 'add':
@@ -120,7 +120,7 @@ test( 'watch a single file', function ( t ) {
 
       // console.log( 'evt: ' + evt )
       next()
-    })
+    } )
 
     var actions = [
       function ( next ) {
@@ -129,7 +129,7 @@ test( 'watch a single file', function ( t ) {
       function ( next ) {
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
           if ( err ) throw err
-        })
+        } )
       },
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = 11', next )
@@ -140,7 +140,7 @@ test( 'watch a single file', function ( t ) {
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = "allakhazam"', next )
         // console.log( 'written allakhazam' )
-      },
+      }
     ]
 
     // setTimeout( next, ACTION_INTERVAL )
@@ -183,26 +183,26 @@ test( 'watch a single file', function ( t ) {
         t.end()
       }, 100 )
     }
-  })
-})
+  } )
+} )
 
 test( 'watch a single file -- file content appended between FSStat:ing', function ( t ) {
   t.timeoutAfter( 7500 )
 
-  prepareTestFiles(function () {
+  prepareTestFiles( function () {
     var filepath = path.join( __dirname, 'tmp', 'main.js' )
 
     var expected = [
-      ''
-      , 'init: abra'
-      , 'change: 88'
-      , 'unlink: ' + filepath
-      , 'add: 11'
-      , 'change: kadabra'
-      , 'change: allakhazam'
+      '',
+      'init: abra',
+      'change: 88',
+      'unlink: ' + filepath,
+      'add: 11',
+      'change: kadabra',
+      'change: allakhazam'
     ]
 
-    var buffer = ['']
+    var buffer = [ '' ]
 
     t.ok(
       verifyFileCleaning(
@@ -218,7 +218,7 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
     var w = miteru.watch( filepath, function ( evt, filepath ) {
       switch ( evt ) {
         case 'init':
-          buffer.push( 'init: ' + run( filepath ))
+          buffer.push( 'init: ' + run( filepath ) )
           break
 
         case 'add':
@@ -241,7 +241,7 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
       }
 
       next()
-    })
+    } )
 
     var actions = [
       function ( next ) {
@@ -250,7 +250,7 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
       function ( next ) {
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
           if ( err ) throw err
-        })
+        } )
       },
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = 11', next )
@@ -262,7 +262,7 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
       },
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = "allakhazam"', next )
-      },
+      }
     ]
 
     // setTimeout( next, ACTION_INTERVAL )
@@ -305,29 +305,29 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
         t.end()
       }, 100 )
     }
-  })
-})
+  } )
+} )
 
 test( 'watch a non-existing file', function ( t ) {
   t.timeoutAfter( 7500 )
 
-  prepareTestFiles(function () {
+  prepareTestFiles( function () {
     var filepath = path.join( __dirname, 'tmp', 'blabla.js' )
 
     var expected = [
-      ''
-      , 'unlink: ' + filepath
-      , 'add: 88'
-      , 'unlink: ' + filepath
-      , 'add: 11'
+      '',
+      'unlink: ' + filepath,
+      'add: 88',
+      'unlink: ' + filepath,
+      'add: 11'
     ]
 
-    var buffer = ['']
+    var buffer = [ '' ]
 
     t.ok(
       verifyFileCleaning(
         [
-          filepath,
+          filepath
         ]
       ),
       'test pre-cleaned properly'
@@ -366,7 +366,7 @@ test( 'watch a non-existing file', function ( t ) {
       }
 
       next()
-    })
+    } )
 
     var actions = [
       function ( next ) {
@@ -375,11 +375,11 @@ test( 'watch a non-existing file', function ( t ) {
       function ( next ) {
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
           if ( err ) throw err
-        })
+        } )
       },
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = 11', next )
-      },
+      }
     ]
 
     // setTimeout( next, ACTION_INTERVAL )
@@ -422,29 +422,29 @@ test( 'watch a non-existing file', function ( t ) {
         t.end()
       }, 100 )
     }
-  })
-})
+  } )
+} )
 
 test( 'watch a new file after init', function ( t ) {
   t.timeoutAfter( 7500 )
 
-  prepareTestFiles(function () {
+  prepareTestFiles( function () {
     var filepath = path.join( __dirname, 'tmp', 'filepath.js' )
     var filepath2 = path.join( __dirname, 'tmp', 'filepath2.js' )
 
     var timestamp = Date.now()
 
     var expected = [
-      ''
-      , 'init: abra'
-      , 'change: 88'
-      , 'unlink: ' + filepath
-      , 'add: 11'
-      , 'add: ' + timestamp // should be of evt type add and not init
-      , 'add: 22'
+      '',
+      'init: abra',
+      'change: 88',
+      'unlink: ' + filepath,
+      'add: 11',
+      'add: ' + timestamp, // should be of evt type add and not init
+      'add: 22'
     ]
 
-    var buffer = ['']
+    var buffer = [ '' ]
 
     t.ok(
       verifyFileCleaning(
@@ -461,7 +461,7 @@ test( 'watch a new file after init', function ( t ) {
     var w = miteru.watch( filepath, function ( evt, filepath ) {
       switch ( evt ) {
         case 'init':
-          buffer.push( 'init: ' + run( filepath ))
+          buffer.push( 'init: ' + run( filepath ) )
           break
 
         case 'add':
@@ -484,7 +484,7 @@ test( 'watch a new file after init', function ( t ) {
       }
 
       next()
-    })
+    } )
 
     var actions = [
       function ( next ) {
@@ -493,7 +493,7 @@ test( 'watch a new file after init', function ( t ) {
       function ( next ) {
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
           if ( err ) throw err
-        })
+        } )
       },
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = 11', next )
@@ -513,7 +513,7 @@ test( 'watch a new file after init', function ( t ) {
       function ( next ) {
         w.add( filepath )
         fs.writeFile( filepath, 'module.exports = 22', next )
-      },
+      }
     ]
 
     // setTimeout( next, ACTION_INTERVAL )
@@ -567,29 +567,29 @@ test( 'watch a new file after init', function ( t ) {
         t.end()
       }, 100 )
     }
-  })
-})
+  } )
+} )
 
 test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
   t.timeoutAfter( 7500 )
 
-  prepareTestFiles(function () {
+  prepareTestFiles( function () {
     var filepath = path.join( __dirname, 'tmp', 'filepath.js' )
     var filepath2 = path.join( __dirname, 'tmp', 'filepath2.js' )
 
     var timestamp = Date.now()
 
     var expected = [
-      ''
-      , 'init: abra'
-      , 'change: 88'
-      , 'unlink: ' + filepath
-      , 'add: 11'
-      , 'add: ' + timestamp // should be of evt type add and not init
-      , 'add: 22'
+      '',
+      'init: abra',
+      'change: 88',
+      'unlink: ' + filepath,
+      'add: 11',
+      'add: ' + timestamp, // should be of evt type add and not init
+      'add: 22'
     ]
 
-    var buffer = ['']
+    var buffer = [ '' ]
 
     t.ok(
       verifyFileCleaning(
@@ -606,7 +606,7 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
     var w = miteru.watch( filepath, function ( evt, filepath ) {
       switch ( evt ) {
         case 'init':
-          buffer.push( 'init: ' + run( filepath ))
+          buffer.push( 'init: ' + run( filepath ) )
           break
 
         case 'add':
@@ -630,7 +630,7 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
 
       // console.log( 'evt: ' + evt )
       next()
-    })
+    } )
 
     var actions = [
       function ( next ) {
@@ -639,7 +639,7 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
       function ( next ) {
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
           if ( err ) throw err
-        })
+        } )
       },
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = 11', next )
@@ -649,7 +649,7 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
           if ( err ) throw err
           setTimeout( next, 300 )
-        })
+        } )
       },
       function () {
         w.add( filepath2 )
@@ -670,7 +670,6 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
             setTimeout( next, 300 )
           }
         } )
-
       },
       function ( next ) {
         fs.readFile( filepath2, function ( err ) {
@@ -686,12 +685,12 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
           } else {
             t.fail( 'file was not removed correctly with debug flag removeAfterFSStat' )
           }
-        })
+        } )
       },
       function ( next ) {
         w.add( filepath )
         fs.writeFile( filepath, 'module.exports = 22', next )
-      },
+      }
     ]
 
     // setTimeout( next, ACTION_INTERVAL )
@@ -751,30 +750,30 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
         t.end()
       }, 100 )
     }
-  })
-})
+  } )
+} )
 
 test( 'exit process after watcher is closed', function ( t ) {
   t.timeoutAfter( 7500 )
 
   process.env.DEV = false
 
-  prepareTestFiles(function () {
+  prepareTestFiles( function () {
     var filepath = path.join( __dirname, 'tmp', 'close.js' )
 
     var expected = [
+      '',
+      'ENOENT',
+      'module.exports = 777',
+      'init: ' + filepath,
+      'result: 777',
+      'watched files: ' + filepath,
+      'closing watcher instance',
+      'exiting: 999',
       ''
-      , 'ENOENT'
-      , 'module.exports = 777'
-      , 'init: ' + filepath
-      , 'result: 777'
-      , 'watched files: ' + filepath
-      , 'closing watcher instance'
-      , 'exiting: 999'
-      , ''
     ]
 
-    var buffer = ['\n']
+    var buffer = [ '\n' ]
 
     t.ok(
       verifyFileCleaning(
@@ -787,36 +786,36 @@ test( 'exit process after watcher is closed', function ( t ) {
 
     process.env.MITERU_LOGLEVEL = 'silent'
 
-    var _t = setTimeout(function () {
+    var _t = setTimeout( function () {
       t.fail( 'timed out' )
       try {
         spawn.kill()
       } catch ( err ) {}
-    }, 7500)
+    }, 7500 )
 
-    var spawn = childProcess.spawn('node', [
+    var spawn = childProcess.spawn( 'node', [
       path.join( __dirname, 'test-close.js' )
-    ])
+    ] )
 
     spawn.stdout.on( 'data', function ( data ) {
       buffer.push( data.toString( 'utf8' ) )
-    })
+    } )
 
     spawn.stderr.on( 'data', function ( data ) {
       buffer.push( data.toString( 'utf8' ) )
-    })
+    } )
 
     spawn.on( 'exit', function ( code ) {
       finish()
-    })
+    } )
 
     function finish () {
       clearTimeout( _t )
 
       t.deepEqual(
-        buffer.join( '' ).split( /[\r\n]+/g ).map(function ( line ) {
+        buffer.join( '' ).split( /[\r\n]+/g ).map( function ( line ) {
           return line.trim()
-        }),
+        } ),
         expected,
         'expected output OK'
       )
@@ -825,29 +824,29 @@ test( 'exit process after watcher is closed', function ( t ) {
         t.end()
       }, 100 )
     }
-  })
-})
+  } )
+} )
 
 test( 'process exits when no files being watched', function ( t ) {
   t.timeoutAfter( 7500 )
 
-  prepareTestFiles(function () {
+  prepareTestFiles( function () {
     var filepath = path.join( __dirname, 'tmp', 'unwatch.js' )
 
     var expected = [
+      '',
+      'ENOENT',
+      'module.exports = 777',
+      'init: ' + filepath,
+      'result: 777',
+      'watched files: ' + filepath,
+      'watched files:',
+      'process should remain active',
+      'exiting: 999',
       ''
-      , 'ENOENT'
-      , 'module.exports = 777'
-      , 'init: ' + filepath
-      , 'result: 777'
-      , 'watched files: ' + filepath
-      , 'watched files:'
-      , 'process should remain active'
-      , 'exiting: 999'
-      , ''
     ]
 
-    var buffer = ['\n']
+    var buffer = [ '\n' ]
 
     t.ok(
       verifyFileCleaning(
@@ -860,40 +859,40 @@ test( 'process exits when no files being watched', function ( t ) {
 
     process.env.MITERU_LOGLEVEL = 'silent'
 
-    var spawn = childProcess.spawn('node', [
+    var spawn = childProcess.spawn( 'node', [
       path.join( __dirname, 'test-unwatch.js' )
-    ])
+    ] )
 
     spawn.stdout.on( 'data', function ( data ) {
       buffer.push( data.toString( 'utf8' ) )
-    })
+    } )
 
     spawn.stderr.on( 'data', function ( data ) {
       buffer.push( data.toString( 'utf8' ) )
-    })
+    } )
 
     var _exited = false
     var _killed = false
 
-    var _t = setTimeout(function () {
+    var _t = setTimeout( function () {
       if ( !_exited ) t.fail( 'spawn failed to exit on its own' )
       var _killed = true
       spawn.kill()
-    }, 7500)
+    }, 7500 )
 
     spawn.on( 'exit', function ( code ) {
       t.equal( _killed, false, 'spawn was not killed' )
       t.equal( _exited, false )
       _exited = true
       finish()
-    })
+    } )
 
     function finish () {
       clearTimeout( _t )
       t.deepEqual(
-        buffer.join( '' ).split( /[\r\n]+/g ).map(function ( line ) {
+        buffer.join( '' ).split( /[\r\n]+/g ).map( function ( line ) {
           return line.trim()
-        }),
+        } ),
         expected,
         'expected output OK'
       )
@@ -902,5 +901,5 @@ test( 'process exits when no files being watched', function ( t ) {
         t.end()
       }, 100 )
     }
-  })
-})
+  } )
+} )
