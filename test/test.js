@@ -198,7 +198,7 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
       , 'change: 88'
       , 'unlink: ' + filepath
       , 'add: 11'
-      , 'change: kadabra'
+      , 'change: kadabra-FSStatDebug'
       , 'change: allakhazam'
     ]
 
@@ -256,9 +256,12 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
         fs.writeFile( filepath, 'module.exports = 11', next )
       },
       function ( next ) {
-        w._setDebugFlag( filepath, 'changeContentAfterFSStat', true )
 
-        fs.writeFile( filepath, 'module.exports = "kadabra"', next )
+        fs.writeFile( filepath, 'module.exports = "kadabra"', function ( err ) {
+          if ( err ) throw err
+          w._setDebugFlag( filepath, 'changeContentAfterFSStat', true )
+          next()
+        } )
       },
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = "allakhazam"', next )
