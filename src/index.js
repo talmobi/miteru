@@ -577,12 +577,12 @@ function pollFile ( fw ) {
                 ( fw.log[ 'FSStatReadFileSyncErrors' ] || 0 ) + 1
               )
 
-              return process.nextTick( function () {
+              process.nextTick( function () {
                 unlockFile( fw )
                 schedulePoll( fw, ATTEMPT_INTERVAL )
                 // pollFile( fw )
               } )
-              break
+              return undefined
 
             default:
               console.error( 'Error between fs.stat and fs.readFileSync' )
