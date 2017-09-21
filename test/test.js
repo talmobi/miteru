@@ -116,6 +116,11 @@ test( 'watch a single file', function ( t ) {
         case 'change':
           buffer.push( 'change: ' + run( filepath ) )
           break
+
+        default:
+          t.fail( 'unrecognized watch evt: [ ' + evt + ' ]' )
+          buffer.push( evt + ': ' + run( filepath ) )
+          break
       }
 
       // console.log( 'evt: ' + evt )
@@ -193,13 +198,13 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
     var filepath = path.join( __dirname, 'tmp', 'main.js' )
 
     var expected = [
-      '',
-      'init: abra',
-      'change: 88',
-      'unlink: ' + filepath,
-      'add: 11',
-      'change: kadabra',
-      'change: allakhazam'
+      ''
+      , 'init: abra'
+      , 'change: 88'
+      , 'unlink: ' + filepath
+      , 'add: 11'
+      , 'change: kadabra-FSStatDebug'
+      , 'change: allakhazam'
     ]
 
     var buffer = [ '' ]
@@ -256,9 +261,12 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
         fs.writeFile( filepath, 'module.exports = 11', next )
       },
       function ( next ) {
-        w._setDebugFlag( filepath, 'changeContentAfterFSStat', true )
 
-        fs.writeFile( filepath, 'module.exports = "kadabra"', next )
+        fs.writeFile( filepath, 'module.exports = "kadabra"', function ( err ) {
+          if ( err ) throw err
+          w._setDebugFlag( filepath, 'changeContentAfterFSStat', true )
+          next()
+        } )
       },
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = "allakhazam"', next )
@@ -481,6 +489,11 @@ test( 'watch a new file after init', function ( t ) {
         case 'change':
           buffer.push( 'change: ' + run( filepath ) )
           break
+
+        default:
+          t.fail( 'unrecognized watch evt: [ ' + evt + ' ]' )
+          buffer.push( evt + ': ' + run( filepath ) )
+          break
       }
 
       next()
@@ -502,7 +515,7 @@ test( 'watch a new file after init', function ( t ) {
         w.unwatch( filepath )
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
           if ( err ) throw err
-          setTimeout( next, 300 )
+          setTimeout( next, ACTION_INTERVAL )
         } )
       },
       function ( next ) {
@@ -580,13 +593,13 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
     var timestamp = Date.now()
 
     var expected = [
-      '',
-      'init: abra',
-      'change: 88',
-      'unlink: ' + filepath,
-      'add: 11',
-      'add: ' + timestamp, // should be of evt type add and not init
-      'add: 22'
+      ''
+      , 'init: abra'
+      , 'change: 88'
+      , 'unlink: ' + filepath
+      , 'add: 11'
+      , 'add: Restat:' + timestamp // should be of evt type add and not init
+      , 'add: 22'
     ]
 
     var buffer = [ '' ]
@@ -602,6 +615,8 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
     )
 
     fs.writeFileSync( filepath, 'module.exports = "abra"' )
+
+    var callNextOnEvent = false
 
     var w = miteru.watch( filepath, function ( evt, filepath ) {
       switch ( evt ) {
@@ -626,34 +641,64 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
         case 'change':
           buffer.push( 'change: ' + run( filepath ) )
           break
+
+        default:
+          t.fail( 'unrecognized watch evt: [ ' + evt + ' ]' )
+          buffer.push( evt + ': ' + run( filepath ) )
+          break
       }
 
       // console.log( 'evt: ' + evt )
-      next()
-    } )
+      if ( callNextOnEvent ) {
+        callNextOnEvent = false
+        next()
+      }
+    })
+
+    setTimeout( next, ACTION_INTERVAL )
+
+    function next () {
+      var a = actions.shift()
+      if ( a ) {
+        a()
+      } else {
+        setTimeout( finish, ACTION_INTERVAL )
+      }
+    }
 
     var actions = [
-      function ( next ) {
-        fs.writeFile( filepath, 'module.exports = 88', next )
+      function () {
+        callNextOnEvent = true
+
+        fs.writeFile( filepath, 'module.exports = 88', function ( err ) {
+          if ( err ) throw err
+        } )
       },
-      function ( next ) {
+      function () {
+        callNextOnEvent = true
+
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
           if ( err ) throw err
         } )
       },
-      function ( next ) {
-        fs.writeFile( filepath, 'module.exports = 11', next )
+      function () {
+        callNextOnEvent = true
+
+        fs.writeFile( filepath, 'module.exports = 11', function ( err ) {
+          if ( err ) throw err
+        } )
       },
       function () {
         w.unwatch( filepath )
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
           if ( err ) throw err
-          setTimeout( next, 300 )
-        } )
+
+          // no events fired, trigger next manually
+          setTimeout( next, ACTION_INTERVAL )
+        })
       },
       function () {
         w.add( filepath2 )
-        w._setDebugFlag( filepath2, 'removeAfterFSStat', true )
 
         t.equal(
           w.getLog( filepath2 )[ 'FSStatReadFileSyncErrors' ],
@@ -661,17 +706,36 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
           'FSStatReadFileSyncErrors OK ( undefined )'
         )
 
-        var content = ( 'module.exports = ' + timestamp )
+        var content = ( 'module.exports = "removeAfterFSStat"' )
+
+        w._setDebugFlag( filepath2, 'removeAfterFSStat', true )
+        t.equal(
+          w.getLog( filepath2 )[ 'FSStatReadFileSyncErrors' ],
+          undefined,
+          'FSStatReadFileSyncErrors OK ( undefined )'
+        )
+
         fs.writeFile( filepath2, content, function ( err ) {
           if ( err ) {
             t.fail( 'failed to create file' )
           } else {
-            t.pass( 'file was created and should be removed soon by debug flag removeAfterFSStat' )
-            setTimeout( next, 300 )
+            t.equal(
+              w.getLog( filepath2 )[ 'loadEventsAbortedCount' ],
+              undefined,
+              'loadEventsAbortedCount OK ( undefined )'
+            )
+
+            t.pass(
+              'file was created and should be removed soon by debug flag removeAfterFSStat'
+            )
+
+            // no events will be fired due to the removeAfterFSStat debug flag
+            // so fire it manually after some time
+            setTimeout( next, ACTION_INTERVAL )
           }
         } )
       },
-      function ( next ) {
+      function () {
         fs.readFile( filepath2, function ( err ) {
           if ( err && err.code ) {
             t.equal(
@@ -680,31 +744,41 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
               'file was removed between FSStat correctly'
             )
 
-            var content = ( 'module.exports = ' + timestamp )
-            fs.writeFile( filepath2, content, next )
+            t.equal(
+              w.getLog( filepath2 )[ 'FSStatReadFileSyncErrors' ],
+              1,
+              'FSStatReadFileSyncErrors OK ( 1 )'
+            )
+
+            // t.equal(
+            //   w.getLog( filepath2 )[ 'loadEventsAbortedCount' ],
+            //   1,
+            //   'loadEventAbortedCount OK ( 1 )'
+            // )
+
+            var content = (
+              'module.exports = "Restat:$timestamp"'
+              .replace( '$timestamp', timestamp )
+            )
+
+            callNextOnEvent = true
+            fs.writeFile( filepath2, content, function ( err ) {
+              if ( err ) throw err
+            } )
           } else {
             t.fail( 'file was not removed correctly with debug flag removeAfterFSStat' )
           }
         } )
       },
-      function ( next ) {
+      function () {
+        callNextOnEvent = true
+
         w.add( filepath )
-        fs.writeFile( filepath, 'module.exports = 22', next )
-      }
-    ]
-
-    // setTimeout( next, ACTION_INTERVAL )
-
-    function next () {
-      var a = actions.shift()
-      if ( a ) {
-        a( function () {
-          // setTimeout( next, ACTION_INTERVAL )
+        fs.writeFile( filepath, 'module.exports = 22', function ( err ) {
+          if ( err ) throw err
         } )
-      } else {
-        setTimeout( finish, ACTION_INTERVAL )
-      }
-    }
+      },
+    ]
 
     function finish () {
       t.deepEqual(
@@ -750,6 +824,159 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
         t.end()
       }, 100 )
     }
+  } )
+} )
+
+test( 'loadEvent abortion', function ( t ) {
+  t.timeoutAfter( 7500 )
+
+  prepareTestFiles( function () {
+    var filepath = path.join( __dirname, 'tmp', 'filepath.js' )
+
+    var expected = [
+      ''
+      , 'init: monkey'
+      , 'unlink: ' + filepath
+      , 'add: giraffe'
+    ]
+
+    var buffer = ['']
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    fs.writeFileSync( filepath, 'module.exports = "monkey"' )
+
+    var callNextOnEvent = false
+
+    var w = miteru.watch( filepath, function ( evt, filepath ) {
+      switch ( evt ) {
+        case 'init':
+          buffer.push( 'init: ' + run( filepath ) )
+          break
+
+        case 'add':
+          buffer.push( 'add: ' + run( filepath ) )
+          break
+
+        case 'unlink':
+          try {
+            fs.readFileSync( filepath )
+            t.fail( 'unlink event FAILURE (File still exists)' )
+          } catch ( err ) {
+            t.equal( err.code, 'ENOENT', 'unlink event OK (ENOENT)' )
+            buffer.push( 'unlink: ' + filepath )
+          }
+          break
+
+        case 'change':
+          buffer.push( 'change: ' + run( filepath ) )
+          break
+
+        default:
+          t.fail( 'unrecognized watch evt: [ ' + evt + ' ]' )
+          buffer.push( evt + ': ' + run( filepath ) )
+          break
+      }
+
+      // console.log( 'evt: ' + evt )
+      if ( callNextOnEvent ) {
+        callNextOnEvent = false
+        next()
+      }
+    })
+
+    setTimeout( next, ACTION_INTERVAL )
+
+    function next () {
+      var a = actions.shift()
+      if ( a ) {
+        a()
+      } else {
+        setTimeout( finish, ACTION_INTERVAL )
+      }
+    }
+
+    var actions = [
+      function () {
+        callNextOnEvent = true
+
+        rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
+          if ( err ) throw err
+        })
+      },
+      function () {
+        w._setDebugFlag( filepath, 'keepUnstable', true )
+
+        t.equal(
+          w.getLog( filepath )[ 'loadEventsAbortedCount' ],
+          undefined,
+          'loadEventsAbortedCount OK ( undefined )'
+        )
+
+        fs.writeFile( filepath, 'module.exports = "batman"', function ( err ) {
+          if ( err ) throw err
+
+          setTimeout( next, ACTION_INTERVAL )
+        } )
+      },
+      function () {
+        rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
+          if ( err ) throw err
+          setTimeout( next, ACTION_INTERVAL )
+        })
+      },
+      function () {
+        t.equal(
+          w.getLog( filepath )[ 'loadEventsAbortedCount' ],
+          1,
+          'loadEventsAbortedCount OK ( 1 )'
+        )
+
+        w._setDebugFlag( filepath, 'keepUnstable', false )
+
+        callNextOnEvent = true
+
+        fs.writeFile( filepath, 'module.exports = "giraffe"', function ( err ) {
+          if ( err ) throw err
+        } )
+      }
+    ]
+
+    function finish () {
+      t.deepEqual(
+        buffer,
+        expected,
+        'expected output OK'
+      )
+
+      t.deepEqual(
+        w.getWatched(),
+        [ filepath ],
+        'expected files (1) still being watched'
+      )
+
+      w.unwatch( filepath )
+
+      t.deepEqual(
+        w.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
+      w.close()
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+
   } )
 } )
 

@@ -248,11 +248,13 @@ api.watch = function watch ( file, callback ) {
     var fw = watcher.files[ filepath ]
     var o = {}
 
+    if ( !fw ) return undefined
+
     Object.keys( fw.log ).forEach( function ( key ) {
       o[ key ] = fw.log[ key ]
     } )
 
-    return o
+    return fw.log
   }
 
   watcher.close = function () {
@@ -474,7 +476,8 @@ function pollFile ( fw ) {
 
           try {
             var text = fs.readFileSync( fw.filepath ).toString( 'utf8' )
-            text += ' ; '
+            // console.log( 'text was: ' + text )
+            text += ' + "-FSStatDebug"'
             fs.writeFileSync( fw.filepath, text )
           } catch ( err ) {
             throw err
@@ -579,6 +582,7 @@ function pollFile ( fw ) {
                 schedulePoll( fw, ATTEMPT_INTERVAL )
                 // pollFile( fw )
               } )
+              break
 
             default:
               console.error( 'Error between fs.stat and fs.readFileSync' )
@@ -703,7 +707,13 @@ function pollFile ( fw ) {
           loadEvent( fw, 'change' )
         } else {
           // fire away events ( add, change ) when file is stable
-          dispatchPendingEvent( fw )
+          if ( debug ) {
+            if ( !debug.keepUnstable ) {
+              dispatchPendingEvent( fw )
+            }
+          } else {
+            dispatchPendingEvent( fw )
+          }
         }
 
         getEnv( 'DEV' ) && console.log( ' == 11 == ' )
@@ -764,11 +774,8 @@ function handleFSStatError ( fw, info ) {
         // --
         // in any case the init phase has ended
         // for this file did it exist or not
+        fw.initFlagged = false
       }
-
-      // in any case the init phase has ended
-      // for this file did it exist or not, previously or otherwise
-      fw.initFlagged = false
 
       // TODO trigger 'unlink' event
       DEBUG.EVT && log( 'unlink: ' + fw.filepath )
@@ -826,6 +833,21 @@ function dispatchPendingEvent ( fw ) {
 function loadEvent ( fw, evt ) {
   // do not overwrite with 'change' events
   if ( fw._eventReadyToFire && evt === 'change' ) return undefined
+
+  // 'add' and 'unlink' cancels each other out ( rare* )
+  // *this can happen if a file is being written without being stable
+  // and is then deleted ( since events are dispatched AFTER the file is stable )
+  // and by stable we mean the file has not changed between two polls ( ~10 milliseconds )
+  if ( fw._eventReadyToFire === 'add' && evt === 'unlink' ) {
+    // console.log( ' == GIRAFFE == ' )
+    fw._eventReadyToFire = undefined
+
+    fw.log[ 'loadEventsAbortedCount' ] = (
+      ( fw.log[ 'loadEventsAbortedCount' ] || 0 ) + 1
+    )
+
+    return undefined
+  }
 
   if ( getEnv( 'DEV' ) ) {
     if ( fw._eventReadyToFire ) {
