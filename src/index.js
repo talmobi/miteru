@@ -471,7 +471,8 @@ function pollFile ( fw ) {
 
           try {
             var text = fs.readFileSync( fw.filepath ).toString( 'utf8' )
-            text += ' ; '
+            // console.log( 'text was: ' + text )
+            text += ' + "-FSStatDebug"'
             fs.writeFileSync( fw.filepath, text )
           } catch ( err ) {
             throw err
