@@ -431,6 +431,7 @@ function pollFile ( fw ) {
 
     if ( err ) {
       switch ( err.code ) {
+        case 'EPERM':
         case 'ENOENT':
           DEBUG.ENOENT && log( ' === POLL ENOENT === ' )
           handleFSStatError( fw )
