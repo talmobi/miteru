@@ -44,7 +44,7 @@
     },
     "minimist": {
       "version": "1.2.0",
-      "from": "minimist@^1.2.0",
+      "from": "https://registry.npmjs.org/minimist/-/minimist-1.2.0.tgz",
       "resolved": "https://registry.npmjs.org/minimist/-/minimist-1.2.0.tgz"
     },
     "once": {
