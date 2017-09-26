@@ -13,6 +13,8 @@ var argv = require( 'minimist' )( process.argv.slice( 2 ), {
     h: 'help',
     v: 'version',
 
+    s: 'server',
+
     i: 'init',
     c: 'change',
     a: 'add',
@@ -35,13 +37,81 @@ var usage = [
   '',
   'Example:',
   '',
-  '  miteru -e "npm run build" "src/**.js"',
+  '  WORK IN PROGRESS',
+  '  miteru -e "npm run build" "src/*.js"',
   ''
 ]
 
 if ( argv.help ) {
   console.log( usage.join( '\n' ) )
   return process.exit( 0 )
+}
+
+var _pendingRequests = []
+var _server
+if ( argv.s ) {
+  if ( typeof argv.s !== 'string' ) {
+    argv.s = ''
+  }
+
+  var miteruPath = path.join( __dirname, 'dist', 'miteru.js' )
+  var publicPath = path.join( process.cwd(), argv.s, 'miteru.js' )
+
+  var buffer = fs.readFileSync( miteruPath )
+  fs.writeFileSync( publicPath, buffer )
+
+  var http = require( 'http' )
+  _server = http.createServer( function ( req, res ) {
+    var r = {
+      req: req,
+      res: res
+    }
+    _pendingRequests.push( r )
+    setTimeout( function () {
+      var i = _pendingRequests.indexOf( r )
+      if ( i >= 0 ) {
+        _pendingRequests.splice( i, 1 )
+      }
+      res.end()
+    }, 1000 * 25 )
+  } )
+
+}
+
+function startServer () {
+  if ( _server ) {
+    _server.listen( 4050, function () {
+      console.log( 'miteru server listening on *:' + _server.address().port )
+    } )
+  }
+}
+
+function triggerReload ( attempts ) {
+  attempts = ( attempts || 0 )
+
+  if (
+    ( _pendingRequests.length < 1 ) &&
+    ( attempts < 10 )
+  ) {
+    return setTimeout( function () {
+      triggerReload( attempts + 1 )
+    }, 100 )
+  }
+
+  _pendingRequests.forEach( function ( r ) {
+    var req = r.req
+    var res = r.res
+    // Set CORS headers
+    // res.setHeader( 'Access-Control-Allow-Origin', req.headers.origin )
+    res.setHeader( 'Access-Control-Allow-Origin', '*' )
+    res.setHeader( 'Access-Control-Request-Method', '*' )
+    res.setHeader( 'Access-Control-Allow-Methods', 'OPTIONS, GET')
+    res.setHeader( 'Access-Control-Allow-Headers', '*' )
+    res.writeHead( '200' )
+    res.end()
+  } )
+
+  _pendingRequests = []
 }
 
 if ( !argv.i && !argv.a && !argv.c && !argv.u ) {
@@ -124,6 +194,7 @@ function showInitMessage () {
   clearTimeout( _showInitMessageTimeout )
   _showInitMessageTimeout = setTimeout( function () {
     console.log( watcher.getWatched().length + ' files are being watched' )
+    startServer()
   }, 200 )
 }
 
@@ -138,6 +209,8 @@ watcher.callback = function ( evt, filepath ) {
         if ( argv.e ) {
           exec( argv.e, filepath )
         }
+
+        triggerReload()
       }
 
       showInitMessage()
@@ -150,6 +223,8 @@ watcher.callback = function ( evt, filepath ) {
         if ( argv.e ) {
           exec( argv.e, filepath )
         }
+
+        triggerReload()
       }
       break
 
@@ -160,6 +235,8 @@ watcher.callback = function ( evt, filepath ) {
         if ( argv.e ) {
           exec( argv.e, filepath )
         }
+
+        triggerReload()
       }
       break
 
@@ -170,6 +247,8 @@ watcher.callback = function ( evt, filepath ) {
         if ( argv.e ) {
           exec( argv.e, filepath )
         }
+
+        triggerReload()
       }
       break
   }
