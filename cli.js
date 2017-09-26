@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+var glob = require( 'glob' )
 var fs = require( 'fs' )
 var path = require( 'path' )
 var childProcess = require( 'child_process' )
@@ -60,7 +61,7 @@ console.log( 'events watched: ' + eventString )
 var watcher = miteru.watch()
 
 argv._.forEach( function ( pattern ) {
-  var isPattern = ( pattern.indexOf( '*' ) !== -1 )
+  var isPattern = ( glob.hasMagic( pattern ) )
   if ( isPattern ) {
     console.log( 'watching pattern: ' + pattern )
   }
