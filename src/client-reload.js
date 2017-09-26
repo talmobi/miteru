@@ -1,3 +1,5 @@
+/* global XMLHttpRequest */
+
 longpoll()
 
 function retry () {
@@ -37,4 +39,3 @@ function longpoll () {
 
   req.send()
 }
-
