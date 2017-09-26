@@ -154,13 +154,15 @@ api.watch = function watch ( file, callback ) {
 
   _watchers.push( watcher )
 
-  var initFlagged = true
+  var _initFlagged = true
   process.nextTick( function () {
-    initFlagged = false
+    _initFlagged = false
   } )
 
   watcher.add = function ( file ) {
     var isPattern = glob.hasMagic( file )
+
+    var initFlagged = _initFlagged
 
     if ( isPattern ) {
       // is glob pattern for zero or multiple files
