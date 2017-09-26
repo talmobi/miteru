@@ -7,5 +7,15 @@
 <body>
   <h1>miteru reload test page</h1>
   <script src="miteru.js" type="text/javascript"></script>
+
+  <script type="text/javascript">
+    var el = document.createElement( 'div' )
+    var num = 0
+    setInterval( function () {
+      el.innerHTML = num++
+    }, 100 )
+
+    document.body.appendChild( el )
+  </script>
 </body>
 </html>
