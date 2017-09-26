@@ -171,7 +171,10 @@ api.watch = function watch ( file, callback ) {
         if ( err ) throw err
 
         files.forEach( function ( file ) {
-          watchFile( watcher, file, initFlagged )
+          // ignore patterns matching node_modules files
+          if ( file.indexOf( 'node_modules' ) === -1 ) {
+            watchFile( watcher, file, initFlagged )
+          }
         } )
       } )
     } else {
