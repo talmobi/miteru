@@ -9,6 +9,8 @@ var minimatch = require( 'minimatch' )
 
 var ALWAYS_COMPARE_FILECONTENT = false
 
+var NOEXIST_INTERVAL = 300 // special polling interval for files that do not exist
+
 var MAX_ATTEMPTS = 5
 var ATTEMPT_INTERVAL = 10 // milliseconds
 
@@ -27,7 +29,7 @@ var EDGE_CASE_MAX_SIZE = ( 1024 * 1024 * 10 ) // 15mb
 var TEMPERATURE = {
   HOT: {
     AGE: ( 1000 * 60 * 5 ), // 5 min
-    INTERVAL: 25
+    INTERVAL: 33
   },
   SEMI_HOT: {
     AGE: ( 1000 * 60 * 15 ), // 15 min
@@ -39,7 +41,7 @@ var TEMPERATURE = {
   },
   COLD: {
     AGE: ( 1000 * 60 * 60 * 3 ), // 3 hours
-    INTERVAL: 25 * 15 // 375
+    INTERVAL: 25 * 13 // 325
   },
   COLDEST_INTERVAL: 25 * 31, // 775
   DORMANT_INTERVAL: 25 * 10 // 200
@@ -386,6 +388,12 @@ function schedulePoll ( fw, forcedInterval ) {
     100
   )
 
+  if ( fw.exists !== true ) {
+    if ( interval < NOEXIST_INTERVAL ) {
+      interval = NOEXIST_INTERVAL
+    }
+  }
+
   // if fw is not awake then cap the polling interval
   // this prevents recently modified/created files prior to watching
   // from being considered as HOT FILES, i.e., files that are
@@ -394,6 +402,11 @@ function schedulePoll ( fw, forcedInterval ) {
     if ( interval < TEMPERATURE.DORMANT_INTERVAL ) {
       interval = TEMPERATURE.DORMANT_INTERVAL
     }
+  }
+
+  var opts = fw.watcher.opts
+  if ( opts.minInterval && fw.pollInterval < opts.minInterval ) {
+    fw.pollInterval = opts.minInterval
   }
 
   if ( forcedInterval !== undefined ) interval = forcedInterval
@@ -936,11 +949,5 @@ function updatePollingInterval ( fw ) {
         fw.pollInterval = TEMPERATURE.COLDEST_INTERVAL
       }
     }
-  }
-
-  var opts = fw.watcher.opts
-  if ( opts.minInterval && fw.pollInterval < opts.minInterval ) {
-    // console.log( 'set min interval' )
-    fw.pollInterval = opts.minInterval
   }
 }
