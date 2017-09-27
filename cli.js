@@ -128,7 +128,13 @@ if ( argv.c ) eventString += 'c'
 if ( argv.u ) eventString += 'u'
 console.log( 'events watched: ' + eventString )
 
-var watcher = miteru.watch()
+var opts = {}
+
+if ( argv.limit ) {
+  opts.minInterval = argv.limit
+}
+
+var watcher = miteru.watch( opts )
 
 argv._.forEach( function ( pattern ) {
   var isPattern = ( glob.hasMagic( pattern ) )
