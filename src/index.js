@@ -143,10 +143,21 @@ process.on( 'exit', function () {
 
 var api = module.exports = {}
 
-api.watch = function watch ( file, callback ) {
+api.watch = function watch ( file, opts, callback ) {
+  if ( typeof file !== 'string' ) {
+    callback = opts
+    opts = file
+  }
+
+  if ( typeof opts !== 'object' ) {
+    callback = opts
+  }
+
   if ( typeof callback !== 'function' ) callback = undefined
 
+  // this object is returned by this function
   var watcher = {
+    opts: opts || {},
     files: {},
     callback: callback,
     evtCallbacks: {}
@@ -162,6 +173,7 @@ api.watch = function watch ( file, callback ) {
   watcher.add = function ( file ) {
     var isPattern = glob.hasMagic( file )
 
+    // scope _initFlagged for these files
     var initFlagged = _initFlagged
 
     if ( isPattern ) {
@@ -924,5 +936,11 @@ function updatePollingInterval ( fw ) {
         fw.pollInterval = TEMPERATURE.COLDEST_INTERVAL
       }
     }
+  }
+
+  var opts = fw.watcher.opts
+  if ( opts.minInterval && fw.pollInterval < opts.minInterval ) {
+    console.log( 'set min interval' )
+    fw.pollInterval = opts.minInterval
   }
 }
