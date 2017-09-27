@@ -940,7 +940,7 @@ function updatePollingInterval ( fw ) {
 
   var opts = fw.watcher.opts
   if ( opts.minInterval && fw.pollInterval < opts.minInterval ) {
-    console.log( 'set min interval' )
+    // console.log( 'set min interval' )
     fw.pollInterval = opts.minInterval
   }
 }
