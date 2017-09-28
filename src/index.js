@@ -418,8 +418,8 @@ function schedulePoll ( fw, forcedInterval ) {
   }
 
   var opts = fw.watcher.opts
-  if ( opts.minInterval && fw.pollInterval < opts.minInterval ) {
-    fw.pollInterval = opts.minInterval
+  if ( opts.minInterval && interval < opts.minInterval ) {
+    interval = opts.minInterval
   }
 
   if ( forcedInterval !== undefined ) interval = forcedInterval
