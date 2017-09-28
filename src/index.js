@@ -389,9 +389,22 @@ function schedulePoll ( fw, forcedInterval ) {
   )
 
   if ( fw.exists !== true ) {
-    if ( interval < NOEXIST_INTERVAL ) {
-      interval = NOEXIST_INTERVAL
+    var now = Date.now()
+    if ( fw._netime ) {
+      var delta = ( now - fw._netime )
+
+      // slow down polling for nonexistent files
+      // that aren't hot
+      if ( delta > TEMPERATURE.HOT.AGE ) {
+        if ( interval < NOEXIST_INTERVAL ) {
+          interval = NOEXIST_INTERVAL
+        }
+      }
+    } else {
+      fw._netime = now
     }
+  } else {
+    delete fw._netime
   }
 
   // if fw is not awake then cap the polling interval
