@@ -1,4 +1,8 @@
-node_modules
+node_modules/
+
+coverage/
+.nyc_output/
+nyc_output/
 
 # vim tmp files
 *.sw?
@@ -8,8 +12,6 @@ node_modules
 
 test/tmp
 
-coverage
-.nyc_output
 
 miteru.js
 
