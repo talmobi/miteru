@@ -9,6 +9,7 @@ node_modules
 test/tmp
 
 coverage
+.nyc_output
 
 miteru.js
 
