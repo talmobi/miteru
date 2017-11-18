@@ -4,7 +4,6 @@
 var fs = require( 'fs' )
 var path = require( 'path' )
 
-var glob = require( 'glob' )
 var minimatch = require( 'minimatch' )
 
 var ALWAYS_COMPARE_FILECONTENT = false
@@ -15,6 +14,8 @@ var MAX_ATTEMPTS = 5
 var ATTEMPT_INTERVAL = 10 // milliseconds
 
 var TRIGGER_DELAY = 0
+
+var glob = require( './glob.js' )
 
 // some file systems round up to the nearest full second (e.g. OSX)
 // for file mtime, atime, ctime etc -- so in order to account for
@@ -181,16 +182,25 @@ api.watch = function watch ( file, opts, callback ) {
     if ( isPattern ) {
       // is glob pattern for zero or multiple files
       var pattern = file
-      glob( pattern, function ( err, files ) {
-        if ( err ) throw err
+      glob(
+        pattern,
+        {
+          ignore: [ 'node_modules' ]
+        },
+        function ( err, files ) {
+          if ( err ) throw err
 
-        files.forEach( function ( file ) {
-          // ignore patterns matching node_modules files
-          if ( file.indexOf( 'node_modules' ) === -1 ) {
-            watchFile( watcher, file, initFlagged )
-          }
-        } )
-      } )
+          // console.log( 'glob finished' )
+
+          files.forEach( function ( file ) {
+            // console.log( 'file: ' + file )
+            // ignore patterns matching node_modules files
+            if ( file.indexOf( 'node_modules' ) === -1 ) {
+              watchFile( watcher, file, initFlagged )
+            }
+          } )
+        }
+      )
     } else {
       // is a single file path
       watchFile( watcher, file, initFlagged )
