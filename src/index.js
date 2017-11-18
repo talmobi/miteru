@@ -15,7 +15,7 @@ var ATTEMPT_INTERVAL = 10 // milliseconds
 
 var TRIGGER_DELAY = 0
 
-var glob = require( './glob.js' )
+var glob = require( 'redstar' )
 
 // some file systems round up to the nearest full second (e.g. OSX)
 // for file mtime, atime, ctime etc -- so in order to account for
