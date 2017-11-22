@@ -12,8 +12,11 @@
   ],
   "scripts": {
     "build": "browserify --node --no-bundle-external --standalone miteru -t [ babelify --presets [ env ] ] src/index.js -o dist/miteru.js 2>&1 | wooster",
+    "wooster": "npm run pass 2>&1 | wooster",
     "lint": "spacestandard --fix src/**/*.js cli.js",
     "pass": "passlint src/*.js dist/*.js cli.js",
+    "watch": "./cli.js src/*.js -e 'npm run wooster'",
+    "test:source": "TEST_SOURCE=true node test/test.js | faucet",
     "test": "npm run lint && npm run build && npm run pass && node test/test.js | faucet",
     "coverage": "nyc npm test"
   },
