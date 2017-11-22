@@ -11,6 +11,7 @@
     "dist/miteru.js"
   ],
   "scripts": {
+    "prepublish": "npm test",
     "build": "browserify --node --no-bundle-external --standalone miteru -t [ babelify --presets [ env ] ] src/index.js -o dist/miteru.js 2>&1 | wooster",
     "wooster": "npm run pass 2>&1 | wooster",
     "lint": "spacestandard --fix src/**/*.js cli.js",
