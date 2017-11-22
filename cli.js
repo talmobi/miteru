@@ -14,6 +14,8 @@ var argv = require( 'minimist' )( process.argv.slice( 2 ), {
     V: 'version',
     v: 'verbose',
 
+    e: 'execute',
+
     i: 'init',
     c: 'change',
     a: 'add',
@@ -191,3 +193,64 @@ watcher.callback = function ( evt, filepath ) {
       break
   }
 }
+
+function clearConsole () {
+  // send special code to clear terminal/console screen
+  process.stdout.write( '\x1bc' )
+}
+
+function _printWatchedFiles () {
+  clearConsole()
+  var watched = watcher.getWatched()
+  watched.forEach( function ( filepath ) {
+    console.log( '  ' + filepath )
+  } )
+  console.log( 'watched files: ' + watched.length )
+}
+
+var commands = {
+  'watched': _printWatchedFiles,
+  'files': _printWatchedFiles,
+  'list': _printWatchedFiles,
+  'execute': function () {
+    clearConsole()
+    var execute = argv.e
+    console.log( '  -e ' + execute )
+  }
+}
+
+var _lastCommand
+process.stdin.on( 'data', function ( chunk ) {
+  // console.log( 'stdin chunk: ' + chunk )
+  var text = chunk.toString( 'utf8' ).toLowerCase().trim()
+
+  var words = text.split( /\s+/ )
+
+  var cmd = words[ 0 ]
+
+  // repeat last command
+  if ( !cmd && _lastCommand ) {
+    return _lastCommand()
+  }
+
+  var args = words.slice( 1 )
+
+  var keys = Object.keys( commands )
+    .filter( function ( command ) {
+      return ( command.indexOf( cmd ) >= 0 )
+    } )
+    .sort( function ( a, b ) {
+      return ( a.indexOf( cmd ) - b.indexOf( cmd ) )
+    } )
+
+  var fn = commands[ keys[ 0 ] ]
+
+  if ( typeof fn === 'function' ) {
+    _lastCommand = function () {
+      fn( args )
+    }
+    fn( args )
+  } else {
+    console.log( 'unknown command: ' + cmd )
+  }
+} )
