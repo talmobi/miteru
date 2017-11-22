@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var glob = require( 'glob' )
+var glob = require( 'redstar' )
 var fs = require( 'fs' )
 var path = require( 'path' )
 var childProcess = require( 'child_process' )
