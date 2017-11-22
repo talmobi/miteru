@@ -159,3 +159,9 @@ Examples:
 
     NOTE: using sshpass -p "password" will add your password to bash history -- use -f to load password from file.
 ```
+
+# Test
+
+```bash
+npm test
+```
