@@ -119,8 +119,44 @@ Intended for watching files during development qickly and easily to trigger rebu
 # Alternatives
 
 [chokidar](https://github.com/paulmillr/chokidar)
+
 [chokidar-cli](https://github.com/kimmobrunfeldt/chokidar-cli)
 
 # How
 
 fs.stat polling. Ranks each file by temperature and sets the polling interval based on how HOT or COLD the file is.
+
+# Usage
+
+```bash
+$ miteru --help
+
+Usage: miteru [options] <files>
+
+Options:
+
+-c, --command <command>
+-e, --execute <command>         Execute a command when a file event occurs.
+
+-i, --init                      Listen for file init events.
+-a, --add                       Listen for file add events.
+-c, --change                    Listen for file change events.
+-u, --unlink                    Listen for file unlink events.
+
+                                By default --add and --change events
+                                are listened to if no events are specified.
+
+--limit <milliseconds>          Minimum allowed polling interval.
+
+-v, --verbose                   Verbose output.
+
+-V, --version                   Print miteru version and exit.
+-h, --help                      Print help ( this text ) and exit.
+
+Examples:
+  miteru -e "npm run build" "src/**/*.js"
+  miteru -iacu -e "echo $evt: $file" "src/**/*.js"
+  miteru -e 'sshpass -p "giraffe" scp $file user@10.0.0.6:/home/user/app/$file'
+
+    NOTE: using sspass -p "password" will add your password to bash history -- use -f to load password from file.
+```
