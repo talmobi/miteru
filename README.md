@@ -158,5 +158,5 @@ Examples:
   miteru -iacu -e "echo $evt: $file" "src/**/*.js"
   miteru -e 'sshpass -p "giraffe" scp $file user@10.0.0.6:/home/user/app/$file'
 
-    NOTE: using sspass -p "password" will add your password to bash history -- use -f to load password from file.
+    NOTE: using sshpass -p "password" will add your password to bash history -- use -f to load password from file.
 ```
