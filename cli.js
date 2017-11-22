@@ -5,22 +5,19 @@ var fs = require( 'fs' )
 var path = require( 'path' )
 var childProcess = require( 'child_process' )
 
-var miteru = require( path.join( __dirname, 'src', 'index.js' ) )
+var miteru = require( path.join( __dirname, 'dist/miteru.js' ) )
 
 var argv = require( 'minimist' )( process.argv.slice( 2 ), {
   boolean: [ 'help', 'version', 'init', 'add', 'change', 'unlink' ],
   alias: {
     h: 'help',
-    v: 'version',
-
-    s: 'server',
+    V: 'version',
+    v: 'verbose',
 
     i: 'init',
     c: 'change',
     a: 'add',
-    u: 'unlink',
-
-    r: 'replace'
+    u: 'unlink'
   }
 } )
 
@@ -28,90 +25,32 @@ if ( argv.version ) {
   var p = fs.readFileSync( path.join( __dirname, 'package.json' ) )
   var json = JSON.parse( p )
   console.log( json.version )
-  return process.exit( 0 )
+  process.exit( 0 )
+}
+
+var verbose = function () {}
+
+if ( argv.verbose ) {
+  var self = this
+  verbose = function () {
+    console.log.apply( self, arguments )
+  }
 }
 
 var usage = [
   '',
-  'Usage: miteru [options] <cmd>',
+  'cli usage: miteru [options] <cmd>',
   '',
   'Example:',
   '',
-  '  WORK IN PROGRESS',
   '  miteru -e "npm run build" "src/*.js"',
+  '  miteru -e "eco evt: $evt, file: $file" "src/*.js"',
   ''
 ]
 
 if ( argv.help ) {
   console.log( usage.join( '\n' ) )
-  return process.exit( 0 )
-}
-
-var _pendingRequests = []
-var _server
-if ( argv.s ) {
-  if ( typeof argv.s !== 'string' ) {
-    argv.s = ''
-  }
-
-  var miteruPath = path.join( __dirname, 'dist', 'miteru.js' )
-  var publicPath = path.join( process.cwd(), argv.s, 'miteru.js' )
-
-  var buffer = fs.readFileSync( miteruPath )
-  fs.writeFileSync( publicPath, buffer )
-
-  var http = require( 'http' )
-  _server = http.createServer( function ( req, res ) {
-    var r = {
-      req: req,
-      res: res
-    }
-    _pendingRequests.push( r )
-    setTimeout( function () {
-      var i = _pendingRequests.indexOf( r )
-      if ( i >= 0 ) {
-        _pendingRequests.splice( i, 1 )
-      }
-      res.end()
-    }, 1000 * 25 )
-  } )
-
-}
-
-function startServer () {
-  if ( _server ) {
-    _server.listen( 4050, function () {
-      console.log( 'miteru server listening on *:' + _server.address().port )
-    } )
-  }
-}
-
-function triggerReload ( attempts ) {
-  attempts = ( attempts || 0 )
-
-  if (
-    ( _pendingRequests.length < 1 ) &&
-    ( attempts < 10 )
-  ) {
-    return setTimeout( function () {
-      triggerReload( attempts + 1 )
-    }, 100 )
-  }
-
-  _pendingRequests.forEach( function ( r ) {
-    var req = r.req
-    var res = r.res
-    // Set CORS headers
-    // res.setHeader( 'Access-Control-Allow-Origin', req.headers.origin )
-    res.setHeader( 'Access-Control-Allow-Origin', '*' )
-    res.setHeader( 'Access-Control-Request-Method', '*' )
-    res.setHeader( 'Access-Control-Allow-Methods', 'OPTIONS, GET')
-    res.setHeader( 'Access-Control-Allow-Headers', '*' )
-    res.writeHead( '200' )
-    res.end()
-  } )
-
-  _pendingRequests = []
+  process.exit( 0 )
 }
 
 if ( !argv.i && !argv.a && !argv.c && !argv.u ) {
@@ -120,18 +59,18 @@ if ( !argv.i && !argv.a && !argv.c && !argv.u ) {
   argv.c = true
 }
 
-var eventString = ''
+var eventString = []
 
-if ( argv.i ) eventString += 'i'
-if ( argv.a ) eventString += 'a'
-if ( argv.c ) eventString += 'c'
-if ( argv.u ) eventString += 'u'
-console.log( 'events watched: ' + eventString )
+if ( argv.i ) eventString.push( 'init' )
+if ( argv.a ) eventString.push( 'add' )
+if ( argv.c ) eventString.push( 'change' )
+if ( argv.u ) eventString.push( 'unlink' )
+console.log( 'events watched: ' + eventString.join( ',' ) )
 
 var opts = {}
 
-if ( argv.limit ) {
-  opts.minInterval = argv.limit
+if ( argv[ 'limit' ] ) {
+  opts.minInterval = argv[ 'limit' ]
 }
 
 var watcher = miteru.watch( opts )
@@ -159,12 +98,14 @@ process.on( 'exit', function () {
 } )
 
 var _execTimeout
-function exec ( cmd, file ) {
-  var r = ( argv.r || '$file' )
+function exec ( cmd, evt, file ) {
+  file = path.relative( process.cwd(), path.resolve( file ) )
 
-  if ( cmd.indexOf( r ) !== -1 && file ) {
-    cmd = cmd.split( r ).join( file )
-  }
+  // replace $file with relative filename
+  cmd = cmd.split( '$file' ).join( file )
+
+  // replace $evt with evt
+  cmd = cmd.split( '$evt' ).join( evt )
 
   // kill previous in case they haven't exited themselves yet
   _spawns.forEach( function ( spawn ) {
@@ -175,7 +116,7 @@ function exec ( cmd, file ) {
 
   clearTimeout( _execTimeout )
   _execTimeout = setTimeout( function () {
-    console.log( 'running command: ' + cmd )
+    verbose( 'running command: ' + cmd )
     var split = cmd.split( /\s+/g )
     var spawn = childProcess.spawn( split[ 0 ], split.slice( 1 ) )
     _spawns.push( spawn )
@@ -200,8 +141,7 @@ function showInitMessage () {
   clearTimeout( _showInitMessageTimeout )
   _showInitMessageTimeout = setTimeout( function () {
     console.log( watcher.getWatched().length + ' files are being watched' )
-    startServer()
-  }, 200 )
+  }, 500 )
 }
 
 watcher.callback = function ( evt, filepath ) {
@@ -210,13 +150,11 @@ watcher.callback = function ( evt, filepath ) {
   switch ( evt ) {
     case 'init':
       if ( argv.i ) {
-        console.log( timestring + ' - CLI: init at: ' + filepath )
+        verbose( timestring + ' - CLI: init at: ' + filepath )
 
         if ( argv.e ) {
-          exec( argv.e, filepath )
+          exec( argv.e, evt, filepath )
         }
-
-        triggerReload()
       }
 
       showInitMessage()
@@ -224,37 +162,31 @@ watcher.callback = function ( evt, filepath ) {
 
     case 'unlink':
       if ( argv.u ) {
-        console.log( timestring + ' - CLI: unlink at: ' + filepath )
+        verbose( timestring + ' - CLI: unlink at: ' + filepath )
 
         if ( argv.e ) {
-          exec( argv.e, filepath )
+          exec( argv.e, evt, filepath )
         }
-
-        triggerReload()
       }
       break
 
     case 'add':
       if ( argv.a ) {
-        console.log( timestring + ' - CLI: add at: ' + filepath )
+        verbose( timestring + ' - CLI: add at: ' + filepath )
 
         if ( argv.e ) {
-          exec( argv.e, filepath )
+          exec( argv.e, evt, filepath )
         }
-
-        triggerReload()
       }
       break
 
     case 'change':
       if ( argv.c ) {
-        console.log( timestring + ' - CLI: change at: ' + filepath )
+        verbose( timestring + ' - CLI: change at: ' + filepath )
 
         if ( argv.e ) {
-          exec( argv.e, filepath )
+          exec( argv.e, evt, filepath )
         }
-
-        triggerReload()
       }
       break
   }
