@@ -39,19 +39,8 @@ if ( argv.verbose ) {
   }
 }
 
-var usage = [
-  '',
-  'cli usage: miteru [options] <cmd>',
-  '',
-  'Example:',
-  '',
-  '  miteru -e "npm run build" "src/*.js"',
-  '  miteru -e "eco evt: $evt, file: $file" "src/*.js"',
-  ''
-]
-
 if ( argv.help ) {
-  console.log( usage.join( '\n' ) )
+  console.log( fs.readFileSync( path.join( __dirname, 'usage.txt' ), 'utf8' ) )
   process.exit( 0 )
 }
 
@@ -76,75 +65,6 @@ if ( argv[ 'limit' ] ) {
 }
 
 var watcher = miteru.watch( opts )
-
-argv._.forEach( function ( pattern ) {
-  var isPattern = ( glob.hasMagic( pattern ) )
-  if ( isPattern ) {
-    console.log( 'watching pattern: ' + pattern )
-  }
-
-  watcher.add( pattern )
-} )
-
-var _spawns = []
-process.on( 'exit', function () {
-  try {
-    watcher.close()
-  } catch ( err ) {}
-
-  _spawns.forEach( function ( spawn ) {
-    try {
-      spawn.kill()
-    } catch ( err ) {}
-  } )
-} )
-
-var _execTimeout
-function exec ( cmd, evt, file ) {
-  file = path.relative( process.cwd(), path.resolve( file ) )
-
-  // replace $file with relative filename
-  cmd = cmd.split( '$file' ).join( file )
-
-  // replace $evt with evt
-  cmd = cmd.split( '$evt' ).join( evt )
-
-  // kill previous in case they haven't exited themselves yet
-  _spawns.forEach( function ( spawn ) {
-    try {
-      spawn.kill()
-    } catch ( err ) {}
-  } )
-
-  clearTimeout( _execTimeout )
-  _execTimeout = setTimeout( function () {
-    verbose( 'running command: ' + cmd )
-    var split = cmd.split( /\s+/g )
-    var spawn = childProcess.spawn( split[ 0 ], split.slice( 1 ) )
-    _spawns.push( spawn )
-
-    spawn.on( 'exit', function () {
-      var i = _spawns.indexOf( spawn )
-      _spawns.splice( i, 1 )
-    } )
-
-    spawn.stdout.on( 'data', function ( chunk ) {
-      process.stdout.write( chunk )
-    } )
-
-    spawn.stderr.on( 'data', function ( chunk ) {
-      process.stderr.write( chunk )
-    } )
-  }, 100 )
-}
-
-var _showInitMessageTimeout
-function showInitMessage () {
-  clearTimeout( _showInitMessageTimeout )
-  _showInitMessageTimeout = setTimeout( function () {
-    console.log( watcher.getWatched().length + ' files are being watched' )
-  }, 500 )
-}
 
 watcher.callback = function ( evt, filepath ) {
   var timestring = ( new Date() ).toTimeString().split( ' ' )[ 0 ]
@@ -192,6 +112,82 @@ watcher.callback = function ( evt, filepath ) {
       }
       break
   }
+}
+
+argv._.forEach( function ( pattern ) {
+  var isPattern = ( glob.hasMagic( pattern ) )
+  if ( isPattern ) {
+    console.log( 'watching pattern: ' + pattern )
+  }
+
+  watcher.add( pattern )
+} )
+
+var _spawns = []
+process.on( 'exit', function () {
+  try {
+    watcher.close()
+  } catch ( err ) {}
+
+  _spawns.forEach( function ( spawn ) {
+    try {
+      spawn.kill()
+    } catch ( err ) {}
+  } )
+} )
+
+var _commands = []
+var _execTimeout
+function exec ( cmd, evt, file ) {
+  file = path.relative( process.cwd(), path.resolve( file ) )
+
+  // replace $file with relative filename
+  cmd = cmd.split( '$file' ).join( file )
+
+  // replace $evt with evt
+  cmd = cmd.split( '$evt' ).join( evt )
+
+  // kill previous in case they haven't exited themselves yet
+  _spawns.forEach( function ( spawn ) {
+    try {
+      spawn.kill()
+    } catch ( err ) { /* ignore */ }
+  } )
+
+  _commands.push( cmd )
+
+  clearTimeout( _execTimeout )
+  _execTimeout = setTimeout( function () {
+    var commands = _commands.slice()
+    _commands = []
+    commands.forEach( function ( cmd ) {
+      verbose( 'running command: ' + cmd )
+      var split = cmd.split( /\s+/g )
+      var spawn = childProcess.spawn( split[ 0 ], split.slice( 1 ) )
+      _spawns.push( spawn )
+
+      spawn.on( 'exit', function () {
+        var i = _spawns.indexOf( spawn )
+        _spawns.splice( i, 1 )
+      } )
+
+      spawn.stdout.on( 'data', function ( chunk ) {
+        process.stdout.write( chunk )
+      } )
+
+      spawn.stderr.on( 'data', function ( chunk ) {
+        process.stderr.write( chunk )
+      } )
+    } )
+  }, 100 )
+}
+
+var _showInitMessageTimeout
+function showInitMessage () {
+  clearTimeout( _showInitMessageTimeout )
+  _showInitMessageTimeout = setTimeout( function () {
+    console.log( watcher.getWatched().length + ' files are being watched' )
+  }, 500 )
 }
 
 function clearConsole () {
