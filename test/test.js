@@ -7,7 +7,12 @@ var path = require( 'path' )
 
 var childProcess = require( 'child_process' )
 
-var miteru = require( '../src/index.js' )
+var miteru = require( '../dist/miteru.js' )
+
+if ( process.env.TEST_SOURCE ) {
+  console.log( 'testing source' )
+  miteru = require( '../src/index.js' )
+}
 
 var test = require( 'tape' )
 
