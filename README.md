@@ -135,7 +135,6 @@ Usage: miteru [options] <files>
 
 Options:
 
--c, --command <command>
 -e, --execute <command>         Execute a command when a file event occurs.
 
 -i, --init                      Listen for file init events.
