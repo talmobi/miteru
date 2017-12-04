@@ -30,22 +30,22 @@ var EDGE_CASE_MAX_SIZE = ( 1024 * 1024 * 10 ) // 15mb
 var TEMPERATURE = {
   HOT: {
     AGE: ( 1000 * 60 * 5 ), // 5 min
-    INTERVAL: 33
+    INTERVAL: 66
   },
   SEMI_HOT: {
     AGE: ( 1000 * 60 * 15 ), // 15 min
-    INTERVAL: 25 * 3 // 75
+    INTERVAL: 100
   },
   WARM: {
     AGE: ( 1000 * 60 * 60 ), // 60 min
-    INTERVAL: 25 * 7 // 175
+    INTERVAL: 225
   },
   COLD: {
     AGE: ( 1000 * 60 * 60 * 3 ), // 3 hours
-    INTERVAL: 25 * 13 // 325
+    INTERVAL: 375
   },
-  COLDEST_INTERVAL: 25 * 31, // 775
-  DORMANT_INTERVAL: 25 * 10 // 200
+  COLDEST_INTERVAL: 775,
+  DORMANT_INTERVAL: 250
 }
 
 var DEBUG = {
@@ -316,7 +316,7 @@ api.watch = function watch ( file, opts, callback ) {
     } else if ( file instanceof Array ) {
       file.forEach( function ( f ) {
         if ( f && typeof f === 'string' ) {
-          watcher.add( file )
+          watcher.add( f )
         }
       } )
     }
