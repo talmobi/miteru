@@ -39,6 +39,7 @@
     "email": "talmo.christian@gmail.com"
   },
   "dependencies": {
+    "cpu-timer": "0.0.4",
     "minimatch": "~3.0.4",
     "minimist": "~1.2.0",
     "redstar": "0.0.1"
