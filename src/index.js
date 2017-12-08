@@ -8,12 +8,13 @@ var minimatch = require( 'minimatch' )
 
 var ALWAYS_COMPARE_FILECONTENT = false
 
-var NOEXIST_INTERVAL = 300 // special polling interval for files that do not exist
+var NOEXISTS_SLEEP_DELAY = ( 1000 * 15 )
+var NOEXIST_INTERVAL = 400 // special polling interval for files that do not exist
 
 var MAX_ATTEMPTS = 5
 var ATTEMPT_INTERVAL = 10 // milliseconds
 
-var TRIGGER_DELAY = 0
+var TRIGGER_DELAY = 1
 
 var glob = require( 'redstar' )
 
@@ -29,23 +30,23 @@ var EDGE_CASE_MAX_SIZE = ( 1024 * 1024 * 10 ) // 15mb
 // polling interval intensities based on delta time ( time since last change )
 var TEMPERATURE = {
   HOT: {
-    AGE: ( 1000 * 60 * 5 ), // 5 min
+    AGE: ( 1000 * 60 * 1 ), // 1 min
     INTERVAL: 66
   },
   SEMI_HOT: {
     AGE: ( 1000 * 60 * 15 ), // 15 min
-    INTERVAL: 100
+    INTERVAL: 88
   },
   WARM: {
     AGE: ( 1000 * 60 * 60 ), // 60 min
-    INTERVAL: 225
+    INTERVAL: 175
   },
   COLD: {
     AGE: ( 1000 * 60 * 60 * 3 ), // 3 hours
-    INTERVAL: 375
+    INTERVAL: 225
   },
-  COLDEST_INTERVAL: 775,
-  DORMANT_INTERVAL: 250
+  COLDEST_INTERVAL: 375,
+  DORMANT_INTERVAL: 150
 }
 
 var DEBUG = {
@@ -129,6 +130,62 @@ function log ( msg ) {
 var _watchers = []
 
 var _running = true
+
+var _pollCounter = 0
+var _pollCountTime = Date.now()
+
+var _pollK = 1
+var _pollKList = []
+var _pollKLimit = 3
+
+var _pollExtraTime = 300
+var _pollCpuK = 1.40
+
+var _pollCountInterval = 2000
+var _pollThreshold = 350 * ( _pollCountInterval / 1000 )
+
+var _pollRate = 0.0001
+var _pollK = 2
+var _pollKMax = 5
+var _pollKMin = 1
+
+var _maxPollTime = 0
+var _minPollTime = 99999
+
+if ( getEnv( 'CPU' ) || getEnv( 'RATE' ) ) {
+  var cpuTimer = require( 'cpu-timer' )
+  cpuTimer.setInterval( function ( cpu ) {
+    if ( getEnv( 'CPU' ) ) {
+      console.log( cpu )
+
+      _pollExtraTime = Math.pow( cpu.usage, _pollCpuK )
+      console.log( 'extra time: ' + _pollExtraTime )
+    }
+
+    var k = ( _pollCounter / _pollThreshold )
+    _pollKList.push( k )
+    while ( _pollKList.length > _pollKLimit ) {
+      _pollKList.shift()
+    }
+    _pollK = 0
+    _pollKList.forEach( function ( k ) {
+      _pollK += k
+    } )
+    _pollK = ( _pollK / _pollKLimit )
+    if ( _pollK < 1 ) _pollK = 1
+
+    if ( getEnv( 'RATE' ) ) {
+      console.log( 'poll average: ' + _pollCounter / ( _pollCountInterval / 1000 ) )
+      console.log( 'poll k: ' + _pollK )
+      console.log( 'maxPollTime: ' + _maxPollTime )
+      console.log( 'minPollTime: ' + _minPollTime )
+    }
+
+    _pollCounter = 0
+    _maxPollTime = 0
+    _minPollTime = 99999
+  }, _pollCountInterval )
+}
 
 // cleanup
 process.on( 'exit', function () {
@@ -405,7 +462,7 @@ function schedulePoll ( fw, forcedInterval ) {
 
       // slow down polling for nonexistent files
       // that aren't hot
-      if ( delta > TEMPERATURE.HOT.AGE ) {
+      if ( delta > NOEXISTS_SLEEP_DELAY ) {
         if ( interval < NOEXIST_INTERVAL ) {
           interval = NOEXIST_INTERVAL
         }
@@ -459,6 +516,8 @@ function pollFile ( fw ) {
 
   getEnv( 'DEV' ) && console.log( ' == fs.stat:ing == ' )
 
+  _pollCounter++
+
   // var isEdgy = ( fw.mtime && ( Date.now() - stats.mtime ) < EDGE_CASE_INTERVAL )
   // TODO rethink fs.readFileSync situation
   // ( could be that fs.stat is outdated when fs.readFileSync is performed )
@@ -481,6 +540,15 @@ function pollFile ( fw ) {
       throw new Error( msg )
       // return undefined
     }
+
+    // TODO
+    var now = Date.now()
+    if ( fw._lastPollTime ) {
+      var delta = ( now - fw._lastPollTime )
+      if ( delta > _maxPollTime ) _maxPollTime = delta
+      if ( delta < _minPollTime ) _minPollTime = delta
+    }
+    fw._lastPollTime = now
 
     if ( err ) {
       switch ( err.code ) {
@@ -973,4 +1041,6 @@ function updatePollingInterval ( fw ) {
       }
     }
   }
+
+  fw.pollInterval = fw.pollInterval * _pollK + _pollExtraTime
 }
