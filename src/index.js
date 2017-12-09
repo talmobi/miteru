@@ -195,8 +195,8 @@ api.watch = function watch ( file, opts, callback ) {
 
     var pct = (
       String( 100 * ( diff / limit ) )
-      .trim()
-      .slice( 0, 6 )
+        .trim()
+        .slice( 0, 6 )
     )
 
     _lastCpuUsage = cpuUsage
@@ -438,6 +438,8 @@ function watchFile ( watcher, file, initFlagged ) {
 
     fw.exists = false
 
+    promote( fw )
+
     watcher.fileCounter++
     watcher.files[ filepath ] = fw
   }
@@ -516,7 +518,7 @@ function schedulePoll ( fw, forcedInterval ) {
   // this prevents recently modified/created files prior to watching
   // from being considered as HOT FILES, i.e., files that are
   // actively being modified
-  if ( !fw._awake ) {
+  if ( !fw._awake && !fw.active ) {
     if ( interval < TEMPERATURE.DORMANT_INTERVAL ) {
       interval = TEMPERATURE.DORMANT_INTERVAL
     }
@@ -527,7 +529,7 @@ function schedulePoll ( fw, forcedInterval ) {
     interval = opts.minInterval
   }
 
-  if ( forcedInterval !== undefined ) interval = forcedInterval
+  if ( forcedInterval != null ) interval = forcedInterval
 
   // event is ready to be fired, FIRE FIRE FIRE!!! :D
   if ( fw._eventReadyToFire ) {
@@ -1047,18 +1049,20 @@ function promote ( fw ) {
   if ( fw.active ) return
 
   var list = fw.watcher.activeList
-
   var inserted = false
-  for ( var i = 0; i < list.length; ++i ) {
-    var item = list[ i ]
-    if ( item.mtime < fw.mtime && item !== fw ) {
-      list.splice( i, 0, fw ) // insert that shit
-      fw.active = true
-      // console.log( item.mtime )
-      // console.log( fw.mtime )
-      // console.log( 'promotion! [' + fw.filepath + ']' )
-      inserted = true
-      break
+
+  if ( fw.mtime ) {
+    for ( var i = 0; i < list.length; ++i ) {
+      var item = list[ i ]
+      if ( ( !item.mtime || item.mtime < fw.mtime ) && item !== fw ) {
+        list.splice( i, 0, fw ) // insert that shit
+        fw.active = true
+        // console.log( item.mtime )
+        // console.log( fw.mtime )
+        // console.log( 'promotion! [' + fw.filepath + ']' )
+        inserted = true
+        break
+      }
     }
   }
 
