@@ -8,7 +8,7 @@ var childProcess = require( 'child_process' )
 var miteru = require( path.join( __dirname, 'dist/miteru.js' ) )
 
 var argv = require( 'minimist' )( process.argv.slice( 2 ), {
-  boolean: [ 'help', 'version', 'init', 'add', 'change', 'unlink' ],
+  boolean: [ 'help', 'version', 'init', 'add', 'change', 'unlink', 'stats', 'verbose' ],
   alias: {
     h: 'help',
     V: 'version',
