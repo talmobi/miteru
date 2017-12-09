@@ -31,22 +31,22 @@ var EDGE_CASE_MAX_SIZE = ( 1024 * 1024 * 10 ) // 15mb
 var TEMPERATURE = {
   HOT: {
     AGE: ( 1000 * 60 * 1 ), // 1 min
-    INTERVAL: 66
+    INTERVAL: 50
   },
   SEMI_HOT: {
     AGE: ( 1000 * 60 * 15 ), // 15 min
     INTERVAL: 88
   },
   WARM: {
-    AGE: ( 1000 * 60 * 60 ), // 60 min
-    INTERVAL: 175
+    AGE: ( 1000 * 60 * 60 * 4 ), // 4 hours
+    INTERVAL: 200
   },
   COLD: {
-    AGE: ( 1000 * 60 * 60 * 3 ), // 3 hours
-    INTERVAL: 225
+    AGE: ( 1000 * 60 * 60 * 24 ), // 24 hours
+    INTERVAL: 333
   },
-  COLDEST_INTERVAL: 375,
-  DORMANT_INTERVAL: 150
+  COLDEST_INTERVAL: 625,
+  DORMANT_INTERVAL: 200
 }
 
 var DEBUG = {
@@ -131,62 +131,6 @@ var _watchers = []
 
 var _running = true
 
-var _pollCounter = 0
-var _pollCountTime = Date.now()
-
-var _pollK = 1
-var _pollKList = []
-var _pollKLimit = 3
-
-var _pollExtraTime = 300
-var _pollCpuK = 1.40
-
-var _pollCountInterval = 2000
-var _pollThreshold = 350 * ( _pollCountInterval / 1000 )
-
-var _pollRate = 0.0001
-var _pollK = 2
-var _pollKMax = 5
-var _pollKMin = 1
-
-var _maxPollTime = 0
-var _minPollTime = 99999
-
-if ( getEnv( 'CPU' ) || getEnv( 'RATE' ) ) {
-  var cpuTimer = require( 'cpu-timer' )
-  cpuTimer.setInterval( function ( cpu ) {
-    if ( getEnv( 'CPU' ) ) {
-      console.log( cpu )
-
-      _pollExtraTime = Math.pow( cpu.usage, _pollCpuK )
-      console.log( 'extra time: ' + _pollExtraTime )
-    }
-
-    var k = ( _pollCounter / _pollThreshold )
-    _pollKList.push( k )
-    while ( _pollKList.length > _pollKLimit ) {
-      _pollKList.shift()
-    }
-    _pollK = 0
-    _pollKList.forEach( function ( k ) {
-      _pollK += k
-    } )
-    _pollK = ( _pollK / _pollKLimit )
-    if ( _pollK < 1 ) _pollK = 1
-
-    if ( getEnv( 'RATE' ) ) {
-      console.log( 'poll average: ' + _pollCounter / ( _pollCountInterval / 1000 ) )
-      console.log( 'poll k: ' + _pollK )
-      console.log( 'maxPollTime: ' + _maxPollTime )
-      console.log( 'minPollTime: ' + _minPollTime )
-    }
-
-    _pollCounter = 0
-    _maxPollTime = 0
-    _minPollTime = 99999
-  }, _pollCountInterval )
-}
-
 // cleanup
 process.on( 'exit', function () {
   _running = false
@@ -211,6 +155,7 @@ api.watch = function watch ( file, opts, callback ) {
 
   if ( typeof opts !== 'object' ) {
     callback = opts
+    opts = {}
   }
 
   if ( typeof callback !== 'function' ) callback = undefined
@@ -220,15 +165,101 @@ api.watch = function watch ( file, opts, callback ) {
     opts: opts || {},
     files: {},
     callback: callback,
-    evtCallbacks: {}
+    evtCallbacks: {},
+    fileCounter: 0,
+    stats: {
+      report: opts.report || getEnv( 'MITERU_STATS' ),
+      cpu: 45,
+      cpus: [ 45, 45, 45 ],
+      pollCounter: 0,
+      maxPollTime: 0,
+      minPollTime: 999999,
+      extraTime: 100 // extra polling time based on number of files watched
+    },
+    activeList: []
+  }
+
+  var _lastCpuUsage = process.cpuUsage()
+  var _lastCpuUsageTime = Date.now()
+
+  function usage () {
+    var cpuUsage = process.cpuUsage()
+    var now = Date.now()
+
+    var prevTotal = ( _lastCpuUsage.user + _lastCpuUsage.system )
+    var total = ( cpuUsage.user + cpuUsage.system )
+    var diff = ( total - prevTotal ) + 0.01
+
+    var delta = ( now - _lastCpuUsageTime )
+    var limit = ( delta * 1000 ) + 0.1 // microseconds to milliseconds
+
+    var pct = (
+      String( 100 * ( diff / limit ) )
+      .trim()
+      .slice( 0, 6 )
+    )
+
+    _lastCpuUsage = cpuUsage
+    _lastCpuUsageTime = now
+
+    return pct
+  }
+
+  var _statsTimeout
+  var _statsTime = Date.now()
+  function statsTick () {
+    var stats = watcher.stats
+
+    if ( Object.keys( watcher.files ).length > 0 ) {
+      var now = Date.now()
+      var delta = ( now - _statsTime )
+
+      if ( delta >= 1000 ) {
+        _statsTime = now
+
+        stats.cpus.push( usage() )
+        while ( stats.cpus.length > 3 ) stats.cpus.shift()
+
+        var sum = 0
+        stats.cpus.forEach( function ( cpu ) {
+          sum += Number( cpu )
+        } )
+        stats.cpu = Math.round( sum / stats.cpus.length )
+
+        stats.extraTime = Math.round( Math.pow( watcher.fileCounter / 75, 1.45 ) )
+
+        if ( stats.report ) {
+          console.log( '[miteru]: files: ' + watcher.fileCounter )
+          console.log( '[miteru]: cpu usage: ' + stats.cpu )
+          console.log( '[miteru]: poll counter: ' + stats.pollCounter )
+          console.log( '[miteru]: max poll time: ' + stats.maxPollTime )
+          console.log( '[miteru]: min poll time: ' + stats.minPollTime )
+          console.log( '[miteru]: extra time: ' + stats.extraTime )
+          console.log( '[miteru]: active files: ' + watcher.activeList.length )
+
+          if ( getEnv( 'MITERU_PROMOTION_LIST' ) ) {
+            watcher.activeList.forEach( function ( fw ) {
+              console.log( 'mtime: ' + new Date( fw.mtime ).toLocaleString() + ' , filepath: ' + path.relative( process.cwd(), fw.filepath ) )
+            } )
+          }
+        }
+
+        stats.pollCounter = 0
+        stats.maxPollTime = 0
+        stats.minPollTime = 999999
+      }
+
+      clearTimeout( _statsTimeout )
+      _statsTimeout = setTimeout( statsTick, 1000 - delta )
+    }
   }
 
   _watchers.push( watcher )
 
   var _initFlagged = true
-  process.nextTick( function () {
+  setTimeout( function () {
     _initFlagged = false
-  } )
+  }, 0 )
 
   watcher.add = function ( file ) {
     var isPattern = glob.hasMagic( file )
@@ -256,11 +287,14 @@ api.watch = function watch ( file, opts, callback ) {
               watchFile( watcher, file, initFlagged )
             }
           } )
+
+          statsTick()
         }
       )
     } else {
       // is a single file path
       watchFile( watcher, file, initFlagged )
+      statsTick()
     }
 
     return watcher // chaining
@@ -315,7 +349,7 @@ api.watch = function watch ( file, opts, callback ) {
     }
 
     if ( Object.keys( watcher.files ).length === 0 ) {
-      // console.log( ' === watcher empty === ' )
+      clearTimeout( _statsTimeout )
     }
 
     return watcher // chaining
@@ -344,6 +378,8 @@ api.watch = function watch ( file, opts, callback ) {
   }
 
   watcher.close = function () {
+    watcher.clear()
+
     Object.keys( watcher.files ).forEach( function ( filepath ) {
       var fw = watcher.files[ filepath ]
       fw.close()
@@ -402,6 +438,7 @@ function watchFile ( watcher, file, initFlagged ) {
 
     fw.exists = false
 
+    watcher.fileCounter++
     watcher.files[ filepath ] = fw
   }
 }
@@ -413,6 +450,7 @@ function unwatchFile ( watcher, file ) {
 
   if ( fw ) {
     fw.close()
+    watcher.fileCounter--
     delete watcher.files[ filepath ]
   } else {
     // already unwatched
@@ -516,8 +554,6 @@ function pollFile ( fw ) {
 
   getEnv( 'DEV' ) && console.log( ' == fs.stat:ing == ' )
 
-  _pollCounter++
-
   // var isEdgy = ( fw.mtime && ( Date.now() - stats.mtime ) < EDGE_CASE_INTERVAL )
   // TODO rethink fs.readFileSync situation
   // ( could be that fs.stat is outdated when fs.readFileSync is performed )
@@ -541,12 +577,16 @@ function pollFile ( fw ) {
       // return undefined
     }
 
-    // TODO
+    // TODO stats
     var now = Date.now()
     if ( fw._lastPollTime ) {
       var delta = ( now - fw._lastPollTime )
-      if ( delta > _maxPollTime ) _maxPollTime = delta
-      if ( delta < _minPollTime ) _minPollTime = delta
+
+      var _wstats = fw.watcher.stats
+      _wstats.pollCounter++
+
+      if ( delta > _wstats.maxPollTime ) _wstats.maxPollTime = delta
+      if ( delta < _wstats.minPollTime ) _wstats.minPollTime = delta
     }
     fw._lastPollTime = now
 
@@ -938,7 +978,11 @@ function dispatchPendingEvent ( fw ) {
 
     clearTimeout( fw.triggerTimeout )
     fw.triggerTimeout = setTimeout( function () {
-      fw._awake = true
+      if ( evt !== 'init' ) fw._awake = true
+
+      if ( evt === 'init' || evt === 'add' || evt === 'change' ) {
+        promote( fw )
+      }
 
       if ( typeof fw.watcher.callback === 'function' ) {
         fw.watcher.callback( evt, fw.filepath, fw._stats )
@@ -999,6 +1043,37 @@ function setFileContent ( fw, content ) {
 //   fw.mtime = stats.mtime
 // }
 
+function promote ( fw ) {
+  if ( fw.active ) return
+
+  var list = fw.watcher.activeList
+
+  var inserted = false
+  for ( var i = 0; i < list.length; ++i ) {
+    var item = list[ i ]
+    if ( item.mtime < fw.mtime && item !== fw ) {
+      list.splice( i, 0, fw ) // insert that shit
+      fw.active = true
+      // console.log( item.mtime )
+      // console.log( fw.mtime )
+      // console.log( 'promotion! [' + fw.filepath + ']' )
+      inserted = true
+      break
+    }
+  }
+
+  if ( !inserted && list.length < 10 ) {
+    list.push( fw )
+    fw.active = true
+    // console.log( 'promotion pushed [' + fw.filepath + ']' )
+  }
+
+  while ( list.length > 10 ) {
+    var pop = list.pop()
+    pop.active = false
+  }
+}
+
 function updatePollingInterval ( fw ) {
   var filepath = fw.filepath
 
@@ -1042,5 +1117,22 @@ function updatePollingInterval ( fw ) {
     }
   }
 
-  fw.pollInterval = fw.pollInterval * _pollK + _pollExtraTime
+  var stats = fw.watcher.stats
+
+  if ( stats.cpu ) {
+    fw.pollInterval = (
+      fw.pollInterval + Math.pow( 1 + stats.cpu, 1.75 )
+    )
+  }
+
+  fw.pollInterval += stats.extraTime
+
+  if ( fw.active ) {
+    // active files should always be fast
+    if ( fw.pollInterval > TEMPERATURE.WARM.INTERVAL ) {
+      fw.pollInterval = TEMPERATURE.WARM.INTERVAL
+    }
+  }
+
+  // fw.pollInterval = fw.pollInterval * Math.log( Math.E + ( 100 / fw.pollInterval ) )
 }
