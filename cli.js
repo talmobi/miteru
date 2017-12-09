@@ -64,6 +64,10 @@ if ( argv[ 'limit' ] ) {
   opts.minInterval = argv[ 'limit' ]
 }
 
+if ( argv.stats ) {
+  opts.report = argv.stats
+}
+
 var watcher = miteru.watch( opts )
 
 watcher.callback = function ( evt, filepath ) {
@@ -72,7 +76,11 @@ watcher.callback = function ( evt, filepath ) {
   switch ( evt ) {
     case 'init':
       if ( argv.i ) {
-        verbose( timestring + ' - CLI: init at: ' + filepath )
+        verbose(
+          timestring + ' init at: ' + path.relative(
+            process.cwd(), filepath
+          )
+        )
 
         if ( argv.e ) {
           exec( argv.e, evt, filepath )
@@ -84,7 +92,11 @@ watcher.callback = function ( evt, filepath ) {
 
     case 'unlink':
       if ( argv.u ) {
-        verbose( timestring + ' - CLI: unlink at: ' + filepath )
+        verbose(
+          timestring + ' unlink at: ' + path.relative(
+            process.cwd(), filepath
+          )
+        )
 
         if ( argv.e ) {
           exec( argv.e, evt, filepath )
@@ -94,7 +106,11 @@ watcher.callback = function ( evt, filepath ) {
 
     case 'add':
       if ( argv.a ) {
-        verbose( timestring + ' - CLI: add at: ' + filepath )
+        verbose(
+          timestring + ' add at: ' + path.relative(
+            process.cwd(), filepath
+          )
+        )
 
         if ( argv.e ) {
           exec( argv.e, evt, filepath )
@@ -104,7 +120,11 @@ watcher.callback = function ( evt, filepath ) {
 
     case 'change':
       if ( argv.c ) {
-        verbose( timestring + ' - CLI: change at: ' + filepath )
+        verbose(
+          timestring + ' change at: ' + path.relative(
+            process.cwd(), filepath
+          )
+        )
 
         if ( argv.e ) {
           exec( argv.e, evt, filepath )
