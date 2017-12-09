@@ -276,7 +276,12 @@ api.watch = function watch ( file, opts, callback ) {
           ignore: [ 'node_modules' ]
         },
         function ( err, files ) {
-          if ( err ) throw err
+          if ( err ) {
+            if ( !( err instanceof Array ) ) err = [ err ]
+            err.forEach( function ( e ) {
+              console.error( e )
+            } )
+          }
 
           // console.log( 'glob finished' )
 
