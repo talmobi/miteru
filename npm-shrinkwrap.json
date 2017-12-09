@@ -33,9 +33,9 @@
       "resolved": "https://registry.npmjs.org/minimist/-/minimist-1.2.0.tgz"
     },
     "redstar": {
-      "version": "0.0.1",
-      "from": "redstar@0.0.1",
-      "resolved": "https://registry.npmjs.org/redstar/-/redstar-0.0.1.tgz"
+      "version": "0.0.2",
+      "from": "redstar@latest",
+      "resolved": "https://registry.npmjs.org/redstar/-/redstar-0.0.2.tgz"
     }
   }
 }
