@@ -15,6 +15,7 @@ Options:
 --limit <milliseconds>          Minimum allowed polling interval.
 
 -v, --verbose                   Verbose output.
+--stats                         Print detailed stats every 1 second.
 
 -V, --version                   Print miteru version and exit.
 -h, --help                      Print help ( this text ) and exit.
