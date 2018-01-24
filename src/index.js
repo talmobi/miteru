@@ -423,6 +423,8 @@ api.watch = function watch ( file, opts, callback ) {
   return watcher
 }
 
+api.minimatch = minimatch
+
 function watchFile ( watcher, file, initFlagged ) {
   var filepath = path.resolve( file )
 
