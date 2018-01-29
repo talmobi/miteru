@@ -179,10 +179,18 @@ api.watch = function watch ( file, opts, callback ) {
     activeList: []
   }
 
-  var _lastCpuUsage = process.cpuUsage()
+  var _lastCpuUsage = {}
+  if ( process.cpuUsage ) {
+    _lastCpuUsage = process.cpuUsage()
+  }
+
   var _lastCpuUsageTime = Date.now()
 
   function usage () {
+    if ( !process.cpuUsage ) {
+      return '???'
+    }
+
     var cpuUsage = process.cpuUsage()
     var now = Date.now()
 
