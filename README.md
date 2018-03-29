@@ -1,14 +1,18 @@
+[![npm](https://img.shields.io/npm/v/miteru.svg?maxAge=3600&style=flat-square)](https://www.npmjs.com/package/miteru)
+[![npm](https://img.shields.io/npm/l/miteru.svg?maxAge=3600&style=flat-square)](https://github.com/talmobi/miteru/blob/master/LICENSE)
 
 # miteru
 
-Quick simple file watcher.
+Basic file watcher.
 
-# Easy to use
+## Easy to use
 
+#### CLI
 ```bash
 miteru '**/*.js' -e 'echo $evt: $file'
 ```
 
+#### Module
 ```javascript
 var miteru = require( './dist/miteru.js' )
 var watcher = miteru.watch( function ( evt, filepath ) {
@@ -52,7 +56,7 @@ setTimeout( function () {
 }, 5000 )
 ```
 
-# Sample output
+## Example
 
 ```bash
 $ miteru '**/*.js' -e 'echo file: $file'
@@ -61,9 +65,11 @@ watching pattern: **/*.js
 10 files are being watched
 ```
 
-# CLI stdin commands
+## CLI STDIN commands
 
-## list, files, watched
+The miteru process listens for line separated STDIN commands ( first match algorithm )
+
+### list, files, watched
 prints out the files being watched
 
 ```bash
@@ -86,7 +92,7 @@ fil
 watched files: 11
 ```
 
-## execute
+### execute
 prints out the execute command being used
 
 ```bash
@@ -98,37 +104,37 @@ ex
   -e echo file: $file
 ```
 
-# Install
+## Install
 
 locally ( project specific, for use with npm scripts )
 
-```bash
+```
 npm install miteru
 ```
 
 globally
-```bash
+```
 npm install -g miteru
 ```
 
-# Why
+## Why
 
-Simple file watching that "just works ™" as fast and as painless as possible.
+Simple file watching that `just works ™` as fast and as painless as possible.
 Intended for watching files during development qickly and easily to trigger rebuilds etc.
 
-# Alternatives
+## Alternatives
 
 [chokidar](https://github.com/paulmillr/chokidar)
 
 [chokidar-cli](https://github.com/kimmobrunfeldt/chokidar-cli)
 
-# How
+## How
 
-fs.stat polling. Ranks each file by temperature and sets the polling interval based on how HOT or COLD the file is.
+Elastic fs.stat polling. Rank orders each file by how often it's changed and sets polling priority accordingly.
 
-# Usage
+## Usage
 
-```bash
+```
 $ miteru --help
 
 Usage: miteru [options] <files>
@@ -161,8 +167,8 @@ Examples:
     NOTE: using sshpass -p "password" will add your password to bash history -- use -f to load password from file.
 ```
 
-# Test
+## Test
 
-```bash
+```
 npm test
 ```
