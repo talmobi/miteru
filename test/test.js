@@ -23,7 +23,14 @@ var ACTION_INTERVAL = 300
 function run ( filepath ) {
   var resolved = require.resolve( filepath )
   delete require.cache[ resolved ]
-  return require( resolved )
+
+  var r = require( resolved )
+
+  if ( typeof r !== 'string' ) {
+    console.log( "resolved wasn't a string" )
+  }
+
+  return r
 }
 
 function prepareTestFiles ( next ) {

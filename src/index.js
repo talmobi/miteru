@@ -12,7 +12,7 @@ var NOEXISTS_SLEEP_DELAY = ( 1000 * 15 )
 var NOEXIST_INTERVAL = 400 // special polling interval for files that do not exist
 
 var MAX_ATTEMPTS = 5
-var ATTEMPT_INTERVAL = 10 // milliseconds
+var ATTEMPT_INTERVAL = 25 // milliseconds
 
 var TRIGGER_DELAY = 1
 
@@ -618,13 +618,18 @@ function pollFile ( fw ) {
         default: throw err
       }
     } else { // no error
-      if ( !stats.size && ( fw.size !== stats.size ) ) {
+      if ( stats.size <= 0 && ( fw.size !== stats.size ) ) {
         getEnv( 'DEV' ) && console.log( ' ============ size was falsy: ' + stats.size )
-        if ( fw.attempts < MAX_ATTEMPTS ) {
-          // handle as an unreliable ENOENT error, i.e., increment
+        if ( fw.attempts < MAX_ATTEMPTS * 2 ) {
+          // handle as a potential ENOENT error, i.e., increment
           // error counter but this event alone cannot consider the file
-          // non-existent -- it's a good indication that the file will be
-          return handleFSStatError( fw, 'unreliable' )
+          // non-existent -- it's a good indicator that the file is unstable
+          // and might not exist soon
+          fw.attempts = ( fw.attempts || 0 ) + 1 // increment attempts
+
+          // schedule next poll faster than normal ( ATTEMPT_INTERVAL )
+          unlockFile( fw )
+          return schedulePoll( fw, ATTEMPT_INTERVAL * 2 )
         } else {
           // if we've exceeded attempts then assume the file exists
           // and it's intentionally empty ( of size 0 )
@@ -929,20 +934,27 @@ function pollFile ( fw ) {
   } )
 }
 
-function handleFSStatError ( fw, info ) {
+function handleFSStatError ( fw ) {
   var existedPreviously = ( fw.exists === true )
-  var unreliable = ( info === 'unreliable' )
 
-  if ( existedPreviously || fw.initFlagged ) {
+  fw.attempts = ( fw.attempts || 0 ) + 1 // increment attempts
+
+  if ( typeof fw.filepath !== 'string' ) {
+    console.log( 'filepath was not a string!' )
+    return process.exit( 1 )
+  }
+
+  var fileShouldExist = ( existedPreviously || fw.initFlagged )
+
+  if ( fileShouldExist ) {
     // file existed previously, assume that it should still
     // exist and attempt to fs.stat it again.
     // or if the file was added on init -- assume that it should
     // exist ( or will exist within a few milliseconds [*] )
     // [*] within (MAX_ATTEMPTS * ATTEMPT_INTERVAL) milliseconds
-    fw.attempts = ( fw.attempts || 0 ) + 1 // increment attempts
 
     // MAX_ATTEMPTS exceeded and not uncertain error event type
-    if ( fw.attempts > MAX_ATTEMPTS && ( unreliable === false ) ) {
+    if ( fw.attempts > MAX_ATTEMPTS ) {
       // after a number of failed attempts
       // consider the file truly non-existent
       fw.exists = false
