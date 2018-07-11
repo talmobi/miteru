@@ -19,7 +19,7 @@
     "pass": "passlint src/*.js dist/*.js cli.js",
     "watch": "./cli.js src/*.js -e 'npm run wooster'",
     "test:source": "TEST_SOURCE=true node test/test.js | faucet",
-    "test:only": "node test/test.js | faucet",
+    "test:only": "node test/test.js",
     "test": "npm run lint && npm run build && npm run pass && node test/test.js | faucet",
     "coverage": "nyc npm test"
   },
