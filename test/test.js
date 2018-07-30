@@ -32,6 +32,8 @@ function run ( filepath ) {
 
   var t = fs.readFileSync( filepath, 'utf8' )
 
+  // try and see if there's issue with file content and require.resolve
+  // since require.resolve seems to sometimes return as if the filepath was empty when it's not
   console.log( 't: ' + t )
   console.log( 'r: ' + r )
 
@@ -171,8 +173,8 @@ test( 'watch a single file', function ( t ) {
     function next () {
       var a = actions.shift()
       if ( a ) {
-        a( function () {
-          // setTimeout( next, ACTION_INTERVAL )
+        a( function ( err ) {
+          if ( err ) throw err
         } )
       } else {
         setTimeout( finish, ACTION_INTERVAL )
@@ -296,7 +298,8 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
     function next () {
       var a = actions.shift()
       if ( a ) {
-        a( function () {
+        a( function ( err ) {
+          if ( err ) throw err
           // setTimeout( next, ACTION_INTERVAL )
         } )
       } else {
@@ -413,7 +416,8 @@ test( 'watch a non-existing file', function ( t ) {
     function next () {
       var a = actions.shift()
       if ( a ) {
-        a( function () {
+        a( function ( err ) {
+          if ( err ) throw err
           // setTimeout( next, ACTION_INTERVAL )
         } )
       } else {
@@ -552,7 +556,8 @@ test( 'watch a new file after init', function ( t ) {
     function next () {
       var a = actions.shift()
       if ( a ) {
-        a( function () {
+        a( function ( err ) {
+          if ( err ) throw err
           // setTimeout( next, ACTION_INTERVAL )
         } )
       } else {
@@ -1044,6 +1049,7 @@ test( 'loadEvent abortion', function ( t ) {
       function () {
         rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
           if ( err ) throw err
+
           setTimeout( next, ACTION_INTERVAL )
         })
       },
