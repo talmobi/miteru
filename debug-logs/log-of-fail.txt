@@ -1,0 +1,1961 @@
+ == 10 ==
+change evt --  size true, mtime true, fileContent true: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = 88
+r: 88
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+unlink evt -- [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == fs.stat:ing ==
+ok 29 unlink event OK (ENOENT)
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:00 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:01 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = 11
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size false, mtime true, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = 11
+r: 11
+ok 30 FSStatReadFileSyncErrors OK ( undefined )
+ok 31 FSStatReadFileSyncErrors OK ( undefined )
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+ok 32 loadEventsAbortedCount OK ( undefined )
+ok 33 file was created and should be removed soon by debug flag removeAfterFSStat
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ok 34 file was removed between FSStat correctly
+ok 35 FSStatReadFileSyncErrors OK ( 1 )
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "Restat:1532662500455"
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 39
+ == 3 ==
+ == 4 ==
+fileContent updated: module.exports = "Restat:1532662500455"
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath2.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "Restat:1532662500455"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = "Restat:1532662500455"
+r: Restat:1532662500455
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "Restat:1532662500455"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 22
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 19
+ == 3 ==
+ == 4 ==
+fileContent updated: module.exports = 22
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "Restat:1532662500455"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 22
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = 22
+r: 22
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 22
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "Restat:1532662500455"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 22
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ok 36 expected output OK
+ok 37 FSStatReadFileSyncErrors OK ( 1 )
+ok 38 expected files (2) still being watched
+ok 39 expected files (1) still being watched
+ok 40 expected files (0) still being watched
+# loadEvent abortion
+ok 41 test pre-cleaned properly
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "monkey"
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 25
+ == 3 ==
+ == 4 ==
+fileContent updated: module.exports = "monkey"
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+init evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 13 ==
+t: module.exports = "monkey"
+r: monkey
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "monkey"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+unlink evt -- [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == fs.stat:ing ==
+ok 42 unlink event OK (ENOENT)
+ok 43 loadEventsAbortedCount OK ( undefined )
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "batman"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:03 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:04 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = "batman"
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size false, mtime true, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+unlink evt -- [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ok 44 loadEventsAbortedCount OK ( 1 )
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "giraffe"
+ == 1 ==
+ == 2 ==
+size was: 25
+size now: 26
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:04 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:04 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = "giraffe"
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size true, mtime true, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "giraffe"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = "giraffe"
+r: giraffe
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "giraffe"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "giraffe"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ok 45 expected output OK
+ok 46 expected files (1) still being watched
+ok 47 expected files (0) still being watched
+# exit process after watcher is closed
+ok 48 test pre-cleaned properly
+ok 49 expected output OK
+# process exits when no files being watched
+ok 50 test pre-cleaned properly
+ok 51 spawn was not killed
+ok 52 should be equal
+ok 53 expected output OK
+ok 54 test post-cleaned properly
+
+1..54
+# tests 54
+# pass  54
+
+# ok
+
+
+=======
+34755
+=======
+
+
+> miteru@0.6.5 test:only /home/ubuntu/tmp/miteru
+> node test/test.js
+
+TAP version 13
+# watch a single file
+ok 1 test pre-cleaned properly
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "abra"
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 23
+ == 3 ==
+ == 4 ==
+fileContent updated: module.exports = "abra"
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+init evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/main.js]
+ == 13 ==
+t: module.exports = "abra"
+r: abra
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+content was: module.exports = "abra"
+content now: module.exports = 88
+ == 2 ==
+size was: 23
+size now: 19
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:09 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:09 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = 88
+ == 5 ==
+  updated stats.mtime
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+change evt --  size true, mtime true, fileContent true: [/home/ubuntu/tmp/miteru/test/tmp/main.js]
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+t: module.exports = 88
+r: 88
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+unlink evt -- [/home/ubuntu/tmp/miteru/test/tmp/main.js]
+ == fs.stat:ing ==
+ok 2 unlink event OK (ENOENT)
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:09 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:10 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = 11
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size false, mtime true, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/main.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = 11
+r: 11
+ == fs.stat OK ==
+is edgy
+read file contents:
+ == 1 ==
+content was: module.exports = 11
+content now:
+ == 2 ==
+ == 3 ==
+ == 4 ==
+fileContent updated:
+ == 5 ==
+  updated stats.mtime
+  updated stats.size -- was: 19, is: 0
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+change evt --  size false, mtime false, fileContent true: [/home/ubuntu/tmp/miteru/test/tmp/main.js]
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "kadabra"
+ == 1 ==
+content was:
+content now: module.exports = "kadabra"
+ == 2 ==
+size was: 0
+size now: 26
+ == 3 ==
+ == 4 ==
+fileContent updated: module.exports = "kadabra"
+ == 5 ==
+  updated stats.mtime
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+change evt --  size true, mtime false, fileContent true: [/home/ubuntu/tmp/miteru/test/tmp/main.js]
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "kadabra"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = "kadabra"
+r: kadabra
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "kadabra"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "allakhazam"
+ == 1 ==
+content was: module.exports = "kadabra"
+content now: module.exports = "allakhazam"
+ == 2 ==
+size was: 26
+size now: 29
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:11 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:11 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = "allakhazam"
+ == 5 ==
+  updated stats.mtime
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+change evt --  size true, mtime true, fileContent true: [/home/ubuntu/tmp/miteru/test/tmp/main.js]
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "allakhazam"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "allakhazam"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+t: module.exports = "allakhazam"
+r: allakhazam
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "allakhazam"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ok 3 expected output OK
+ok 4 expected files (1) still being watched
+ok 5 expected files (0) still being watched
+# watch a single file -- file content appended between FSStat:ing
+ok 6 test pre-cleaned properly
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "abra"
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 23
+ == 3 ==
+ == 4 ==
+fileContent updated: module.exports = "abra"
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+init evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/main.js]
+ == 13 ==
+t: module.exports = "abra"
+r: abra
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+content was: module.exports = "abra"
+content now: module.exports = 88
+ == 2 ==
+size was: 23
+size now: 19
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:12 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:12 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = 88
+ == 5 ==
+  updated stats.mtime
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+change evt --  size true, mtime true, fileContent true: [/home/ubuntu/tmp/miteru/test/tmp/main.js]
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = 88
+r: 88
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+unlink evt -- [/home/ubuntu/tmp/miteru/test/tmp/main.js]
+ == fs.stat:ing ==
+ok 7 unlink event OK (ENOENT)
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:12 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:13 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = 11
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size false, mtime true, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/main.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+t: module.exports = 11
+r: 11
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "kadabra" + "-FSStatDebug"
+ == 1 ==
+content was: module.exports = 11
+content now: module.exports = "kadabra" + "-FSStatDebug"
+ == 2 ==
+size was: 19
+size now: 26
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:13 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:13 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = "kadabra" + "-FSStatDebug"
+ == 5 ==
+  updated stats.mtime
+  updated stats.size -- was: 26, is: 43
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+change evt --  size true, mtime true, fileContent true: [/home/ubuntu/tmp/miteru/test/tmp/main.js]
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "kadabra" + "-FSStatDebug"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = "kadabra" + "-FSStatDebug"
+r: kadabra-FSStatDebug
+ == fs.stat OK ==
+is edgy
+read file contents:
+ == 1 ==
+content was: module.exports = "kadabra" + "-FSStatDebug"
+content now:
+ == 2 ==
+ == 3 ==
+ == 4 ==
+fileContent updated:
+ == 5 ==
+  updated stats.mtime
+  updated stats.size -- was: 43, is: 0
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+change evt --  size false, mtime false, fileContent true: [/home/ubuntu/tmp/miteru/test/tmp/main.js]
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents:
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+require.resolved was of type 'object'
+t:
+r: [object Object]
+ == fs.stat OK ==
+is edgy
+read file contents:
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "allakhazam"
+ == 1 ==
+content was:
+content now: module.exports = "allakhazam"
+ == 2 ==
+size was: 0
+size now: 29
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:13 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:14 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = "allakhazam"
+ == 5 ==
+  updated stats.mtime
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+change evt --  size true, mtime true, fileContent true: [/home/ubuntu/tmp/miteru/test/tmp/main.js]
+ == 11 ==
+not ok 8 expected output OK
+  ---
+    operator: deepEqual
+    expected: |-
+      [ '', 'init: abra', 'change: 88', 'unlink: /home/ubuntu/tmp/miteru/test/tmp/main.js', 'add: 11', 'change: kadabra-FSStatDebug', 'change: allakhazam' ]
+    actual: |-
+      [ '', 'init: abra', 'change: 88', 'unlink: /home/ubuntu/tmp/miteru/test/tmp/main.js', 'add: 11', 'change: kadabra-FSStatDebug', 'change: [object Object]' ]
+    at: Timeout.finish [as _onTimeout] (/home/ubuntu/tmp/miteru/test/test.js:308:9)
+  ...
+ok 9 expected files (1) still being watched
+ok 10 expected files (0) still being watched
+# watch a non-existing file
+ok 11 test pre-cleaned properly
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+unlink evt -- [/home/ubuntu/tmp/miteru/test/tmp/blabla.js]
+ == fs.stat:ing ==
+ok 12 unlink event OK (ENOENT)
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 19
+ == 3 ==
+ == 4 ==
+fileContent updated: module.exports = 88
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/blabla.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+t: module.exports = 88
+r: 88
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+unlink evt -- [/home/ubuntu/tmp/miteru/test/tmp/blabla.js]
+ == fs.stat:ing ==
+ok 13 unlink event OK (ENOENT)
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:15 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:15 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = 11
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size false, mtime true, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/blabla.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = 11
+r: 11
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ok 14 expected output OK
+ok 15 expected files (1) still being watched
+ok 16 expected files (0) still being watched
+# watch a new file after init
+ok 17 test pre-cleaned properly
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "abra"
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 23
+ == 3 ==
+ == 4 ==
+fileContent updated: module.exports = "abra"
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+init evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 13 ==
+t: module.exports = "abra"
+r: abra
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+content was: module.exports = "abra"
+content now: module.exports = 88
+ == 2 ==
+size was: 23
+size now: 19
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:16 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:16 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = 88
+ == 5 ==
+  updated stats.mtime
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+change evt --  size true, mtime true, fileContent true: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = 88
+r: 88
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+unlink evt -- [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == fs.stat:ing ==
+ok 18 unlink event OK (ENOENT)
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:16 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:17 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = 11
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size false, mtime true, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = 11
+r: 11
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 1532662516975
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 30
+ == 3 ==
+ == 4 ==
+fileContent updated: module.exports = 1532662516975
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath2.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 1532662516975
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = 1532662516975
+r: 1532662516975
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 1532662516975
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ ============ size was falsy: 0
+ consider file empty
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 22
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 0
+ == 3 ==
+ == 4 ==
+fileContent updated: module.exports = 22
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 1532662516975
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 22
+ == 1 ==
+ == 2 ==
+size was: 0
+size now: 19
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+change evt --  size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 22
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = 22
+r: 22
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 22
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 1532662516975
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 22
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ok 19 expected output OK
+ok 20 expected files (2) still being watched
+ok 21 expected files (1) still being watched
+ok 22 expected files (0) still being watched
+# watch a glob of files
+ok 23 test pre-cleaned properly
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: foo
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 3
+ == 3 ==
+ == 4 ==
+fileContent updated: foo
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+init evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/bar.js]
+ == 13 ==
+ == fs.stat OK ==
+is edgy
+read file contents: foo
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 3
+ == 3 ==
+ == 4 ==
+fileContent updated: foo
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+init evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/foo.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: foo
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat OK ==
+is edgy
+read file contents: foo
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ok 24 expected output OK
+ok 25 expected files (2) still being watched
+ok 26 expected files (1) still being watched
+ok 27 expected files (0) still being watched
+# watch a new file after init removed between FSStat:ing
+ok 28 test pre-cleaned properly
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "abra"
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 23
+ == 3 ==
+ == 4 ==
+fileContent updated: module.exports = "abra"
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+init evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 13 ==
+t: module.exports = "abra"
+r: abra
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "abra"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+content was: module.exports = "abra"
+content now: module.exports = 88
+ == 2 ==
+size was: 23
+size now: 19
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:20 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:20 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = 88
+ == 5 ==
+  updated stats.mtime
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+change evt --  size true, mtime true, fileContent true: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = 88
+r: 88
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 88
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+unlink evt -- [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == fs.stat:ing ==
+ok 29 unlink event OK (ENOENT)
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:20 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:21 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = 11
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size false, mtime true, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 11
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = 11
+r: 11
+ok 30 FSStatReadFileSyncErrors OK ( undefined )
+ok 31 FSStatReadFileSyncErrors OK ( undefined )
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+ok 32 loadEventsAbortedCount OK ( undefined )
+ok 33 file was created and should be removed soon by debug flag removeAfterFSStat
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ok 34 file was removed between FSStat correctly
+ok 35 FSStatReadFileSyncErrors OK ( 1 )
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "Restat:1532662520234"
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 39
+ == 3 ==
+ == 4 ==
+fileContent updated: module.exports = "Restat:1532662520234"
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath2.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "Restat:1532662520234"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "Restat:1532662520234"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+t: module.exports = "Restat:1532662520234"
+r: Restat:1532662520234
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 22
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 19
+ == 3 ==
+ == 4 ==
+fileContent updated: module.exports = 22
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "Restat:1532662520234"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 22
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = 22
+r: 22
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 22
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "Restat:1532662520234"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = 22
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ok 36 expected output OK
+ok 37 FSStatReadFileSyncErrors OK ( 1 )
+ok 38 expected files (2) still being watched
+ok 39 expected files (1) still being watched
+ok 40 expected files (0) still being watched
+# loadEvent abortion
+ok 41 test pre-cleaned properly
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "monkey"
+ == 1 ==
+ == 2 ==
+size was: undefined
+size now: 25
+ == 3 ==
+ == 4 ==
+fileContent updated: module.exports = "monkey"
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+init evt -- size true, mtime false, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 13 ==
+t: module.exports = "monkey"
+r: monkey
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "monkey"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+unlink evt -- [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == fs.stat:ing ==
+ok 42 unlink event OK (ENOENT)
+ok 43 loadEventsAbortedCount OK ( undefined )
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "batman"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:23 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:23 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = "batman"
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size false, mtime true, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+ == fs.stat:ing ==
+unlink evt -- [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ok 44 loadEventsAbortedCount OK ( 1 )
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "giraffe"
+ == 1 ==
+ == 2 ==
+size was: 25
+size now: 26
+ == 3 ==
+mtime was: Fri Jul 27 2018 06:35:23 GMT+0300 (EEST)
+mtime now: Fri Jul 27 2018 06:35:24 GMT+0300 (EEST)
+ == 4 ==
+fileContent updated: module.exports = "giraffe"
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 12 ==
+add evt -- size true, mtime true, fileContent false: [/home/ubuntu/tmp/miteru/test/tmp/filepath.js]
+ == 13 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "giraffe"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+t: module.exports = "giraffe"
+r: giraffe
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "giraffe"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ == fs.stat:ing ==
+ == fs.stat OK ==
+is edgy
+read file contents: module.exports = "giraffe"
+ == 1 ==
+ == 2 ==
+ == 3 ==
+ == 4 ==
+ == 5 ==
+ == 6 ==
+ == 7 ==
+ == 8 ==
+ == 9 ==
+ == 10 ==
+ == 11 ==
+ok 45 expected output OK
+ok 46 expected files (1) still being watched
+ok 47 expected files (0) still being watched
+# exit process after watcher is closed
+ok 48 test pre-cleaned properly
+ok 49 expected output OK
+# process exits when no files being watched
+ok 50 test pre-cleaned properly
+ok 51 spawn was not killed
+ok 52 should be equal
+ok 53 expected output OK
+ok 54 test post-cleaned properly
+
+1..54
+# tests 54
+# pass  53
+# fail  1
+
+
+npm ERR! Linux 4.13.0-36-generic
+npm ERR! argv "/usr/local/bin/node" "/usr/local/bin/npm" "run" "test:only"
+npm ERR! node v6.13.0
+npm ERR! npm  v3.10.10
+npm ERR! code ELIFECYCLE
+npm ERR! miteru@0.6.5 test:only: `node test/test.js`
+npm ERR! Exit status 1
+npm ERR!
+npm ERR! Failed at the miteru@0.6.5 test:only script 'node test/test.js'.
+npm ERR! Make sure you have the latest version of node.js and npm installed.
+npm ERR! If you do, this is most likely a problem with the miteru package,
+npm ERR! not with npm itself.
+npm ERR! Tell the author that this fails on your system:
+npm ERR!     node test/test.js
+npm ERR! You can get information on how to open an issue for this project with:
+npm ERR!     npm bugs miteru
+npm ERR! Or if that isn't available, you can get their info via:
+npm ERR!     npm owner ls miteru
+npm ERR! There is likely additional logging output above.
+
+npm ERR! Please include the following file with any support request:
+npm ERR!     /home/ubuntu/tmp/miteru/npm-debug.log
+./untilfail.sh: line 3: say: command not found
+ ubuntu  ~/tmp/miteru (fix-size-0-consistency)
+]
