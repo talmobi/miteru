@@ -26,9 +26,15 @@ function run ( filepath ) {
 
   var r = require( resolved )
 
-  if ( typeof r !== 'string' ) {
-    console.log( "resolved wasn't a string" )
+  if ( typeof r == 'object' ) {
+    console.log( "require.resolved was of type 'object'" )
   }
+
+  var t = fs.readFileSync( filepath, 'utf8' )
+
+  console.log( 't: ' + t )
+  console.log( 'r: ' + r )
+
 
   return r
 }
