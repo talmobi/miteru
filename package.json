@@ -1,6 +1,6 @@
 {
   "name": "miteru",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "description": "simple file watcher",
   "main": "dist/miteru.js",
   "bin": {
