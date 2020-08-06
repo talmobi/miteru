@@ -125,27 +125,42 @@ function log ( msg ) {
   console.log( msg )
 }
 
-// user created watchers TODO
-// (buckets of files to watch and a)
-var _watchers = []
-
 var _running = true
+var _fileWatchers = {}
+var _activeList = []
+
+var _options = {
+  // minimum polling interval per file
+  minInterval: undefined
+}
 
 // cleanup
 process.on( 'exit', function () {
   _running = false
-  _watchers.forEach( function ( watcher ) {
-    Object.keys( watcher.files )
-      .forEach( function ( filepath ) {
-        unwatchFile( watcher, filepath )
-        // var fw = watcher.files[ filepath ]
-        // fw.close()
-        // delete watcher.files[ fw.filepath ]
-      } )
+
+  Object.keys( _fileWatchers ).forEach( function ( key ) {
+    var fw = _fileWatchers[ key ]
+    fw && fw.close()
   } )
 } )
 
 var api = module.exports = {}
+
+api._fileWatchers = _fileWatchers
+
+var _watcherIds = 1
+
+var _stats = {
+  report: getEnv( 'MITERU_STATS' ),
+  cpu: 45,
+  cpus: [ 45, 45, 45 ],
+  pollCounter: 0,
+  maxPollTime: 0,
+  minPollTime: 999999,
+
+  // extra polling time based on number of files watched
+  extraTime: 100
+}
 
 api.watch = function watch ( file, opts, callback ) {
   if ( typeof file !== 'string' ) {
@@ -162,107 +177,13 @@ api.watch = function watch ( file, opts, callback ) {
 
   // this object is returned by this function
   var watcher = {
+    id: _watcherIds++,
     opts: opts || {},
     files: {},
     callback: callback,
     evtCallbacks: {},
-    fileCounter: 0,
-    stats: {
-      report: opts.report || getEnv( 'MITERU_STATS' ),
-      cpu: 45,
-      cpus: [ 45, 45, 45 ],
-      pollCounter: 0,
-      maxPollTime: 0,
-      minPollTime: 999999,
-      extraTime: 100 // extra polling time based on number of files watched
-    },
-    activeList: []
+    fileCounter: 0
   }
-
-  var _lastCpuUsage = {}
-  if ( process.cpuUsage ) {
-    _lastCpuUsage = process.cpuUsage()
-  }
-
-  var _lastCpuUsageTime = Date.now()
-
-  function usage () {
-    if ( !process.cpuUsage ) {
-      return '???'
-    }
-
-    var cpuUsage = process.cpuUsage()
-    var now = Date.now()
-
-    var prevTotal = ( _lastCpuUsage.user + _lastCpuUsage.system )
-    var total = ( cpuUsage.user + cpuUsage.system )
-    var diff = ( total - prevTotal ) + 0.01
-
-    var delta = ( now - _lastCpuUsageTime )
-    var limit = ( delta * 1000 ) + 0.1 // microseconds to milliseconds
-
-    var pct = (
-      String( 100 * ( diff / limit ) )
-        .trim()
-        .slice( 0, 6 )
-    )
-
-    _lastCpuUsage = cpuUsage
-    _lastCpuUsageTime = now
-
-    return pct
-  }
-
-  var _statsTimeout
-  var _statsTime = Date.now()
-  function statsTick () {
-    var stats = watcher.stats
-
-    if ( Object.keys( watcher.files ).length > 0 ) {
-      var now = Date.now()
-      var delta = ( now - _statsTime )
-
-      if ( delta >= 1000 ) {
-        _statsTime = now
-
-        stats.cpus.push( usage() )
-        while ( stats.cpus.length > 3 ) stats.cpus.shift()
-
-        var sum = 0
-        stats.cpus.forEach( function ( cpu ) {
-          sum += Number( cpu )
-        } )
-        stats.cpu = Math.round( sum / stats.cpus.length )
-
-        stats.extraTime = Math.round( Math.pow( watcher.fileCounter / 75, 1.45 ) )
-
-        if ( stats.report ) {
-          console.log( '[miteru]: files: ' + watcher.fileCounter )
-          console.log( '[miteru]: cpu usage: ' + stats.cpu )
-          console.log( '[miteru]: poll counter: ' + stats.pollCounter )
-          console.log( '[miteru]: max poll time: ' + stats.maxPollTime )
-          console.log( '[miteru]: min poll time: ' + stats.minPollTime )
-          console.log( '[miteru]: extra time: ' + stats.extraTime )
-          console.log( '[miteru]: active files: ' + watcher.activeList.length )
-
-          if ( getEnv( 'MITERU_PROMOTION_LIST' ) ) {
-            watcher.activeList.forEach( function ( fw ) {
-              console.log( 'mtime: ' + new Date( fw.mtime ).toLocaleString() + ' , filepath: ' + path.relative( process.cwd(), fw.filepath ) )
-            } )
-          }
-        }
-
-        stats.pollCounter = 0
-        stats.maxPollTime = 0
-        stats.minPollTime = 999999
-      }
-
-      clearTimeout( _statsTimeout )
-      _statsTimeout = setTimeout( statsTick, 1000 - delta )
-    }
-  }
-
-  _watchers.push( watcher )
 
   var _initFlagged = true
   setTimeout( function () {
@@ -301,13 +222,13 @@ api.watch = function watch ( file, opts, callback ) {
             }
           } )
 
-          statsTick()
+          statsFunction.start()
         }
       )
     } else {
       // is a single file path
       watchFile( watcher, file, initFlagged )
-      statsTick()
+      statsFunction.start()
     }
 
     return watcher // chaining
@@ -361,10 +282,6 @@ api.watch = function watch ( file, opts, callback ) {
       unwatchFile( watcher, file )
     }
 
-    if ( Object.keys( watcher.files ).length === 0 ) {
-      clearTimeout( _statsTimeout )
-    }
-
     return watcher // chaining
   }
 
@@ -391,12 +308,17 @@ api.watch = function watch ( file, opts, callback ) {
   }
 
   watcher.close = function () {
-    watcher.clear()
-
     Object.keys( watcher.files ).forEach( function ( filepath ) {
-      var fw = watcher.files[ filepath ]
-      fw.close()
+      unwatchFile( watcher, filepath )
     } )
+
+    watcher.add = function () {
+      throw new Error( 'watcher has been closed.' )
+    }
+
+    watcher.watch = function () {
+      throw new Error( 'watcher has been closed.' )
+    }
 
     // JavaScript functions return 'undefined' by default -- but
     // explicitly writing it here as it is intended
@@ -431,62 +353,190 @@ api.watch = function watch ( file, opts, callback ) {
   return watcher
 }
 
+function statsFunction () {
+  var _lastCpuUsage = {}
+  if ( process.cpuUsage ) {
+    _lastCpuUsage = process.cpuUsage()
+  }
+
+  var _lastCpuUsageTime = Date.now()
+
+  statsFunction.reset = function reset () {
+    clearTimeout( statsFunction.timeout )
+    statsFunction.timeout = undefined
+    statsFunction.time = Date.now()
+    _lastCpuUsage = {}
+    _lastCpuUsageTime = Date.now()
+  }
+
+  function usage () {
+    if ( !process.cpuUsage ) {
+      return '???'
+    }
+
+    var cpuUsage = process.cpuUsage()
+    var now = Date.now()
+
+    var prevTotal = ( _lastCpuUsage.user + _lastCpuUsage.system )
+    var total = ( cpuUsage.user + cpuUsage.system )
+    var diff = ( total - prevTotal ) + 0.01
+
+    var delta = ( now - _lastCpuUsageTime )
+    var limit = ( delta * 1000 ) + 0.1 // microseconds to milliseconds
+
+    var pct = (
+      String( 100 * ( diff / limit ) )
+        .trim()
+        .slice( 0, 6 )
+    )
+
+    _lastCpuUsage = cpuUsage
+    _lastCpuUsageTime = now
+
+    return pct
+  }
+
+  statsFunction.start = function () {
+    if ( statsFunction.timeout === undefined ) {
+      clearTimeout( statsFunction.timeout )
+      statsFunction.timeout = setTimeout( statsTick, 1000 )
+    }
+  }
+
+  statsFunction.time = Date.now()
+  function statsTick () {
+    if ( Object.keys( _fileWatchers ).length > 0 ) {
+      var now = Date.now()
+      var delta = ( now - statsFunction.time )
+
+      if ( delta >= 1000 ) {
+        statsFunction.time = now
+
+        _stats.cpus.push( usage() )
+        while ( _stats.cpus.length > 3 ) _stats.cpus.shift()
+
+        var sum = 0
+        _stats.cpus.forEach( function ( cpu ) {
+          sum += Number( cpu )
+        } )
+        _stats.cpu = Math.round( sum / _stats.cpus.length )
+
+        var fileCount = Object.keys( _fileWatchers ).length
+
+        _stats.extraTime = Math.round( Math.pow( fileCount / 75, 1.45 ) )
+
+        if ( _stats.report ) {
+          console.log( '[miteru]: files: ' + fileCount )
+          console.log( '[miteru]: cpu usage: ' + _stats.cpu )
+          console.log( '[miteru]: poll counter: ' + _stats.pollCounter )
+          console.log( '[miteru]: max poll time: ' + _stats.maxPollTime )
+          console.log( '[miteru]: min poll time: ' + _stats.minPollTime )
+          console.log( '[miteru]: extra time: ' + _stats.extraTime )
+          console.log( '[miteru]: active files: ' + _activeList.length )
+
+          if ( getEnv( 'MITERU_PROMOTION_LIST' ) ) {
+            _activeList.forEach( function ( fw ) {
+              console.log( 'mtime: ' + new Date( fw.mtime ).toLocaleString() + ' , filepath: ' + path.relative( process.cwd(), fw.filepath ) )
+            } )
+          }
+        }
+
+        _stats.pollCounter = 0
+        _stats.maxPollTime = 0
+        _stats.minPollTime = 999999
+      }
+
+      clearTimeout( statsFunction.timeout )
+      statsFunction.timeout = setTimeout( statsTick, 1000 - delta )
+    }
+  }
+}
+statsFunction()
+
 api.minimatch = minimatch
 
 function watchFile ( watcher, file, initFlagged ) {
   var filepath = path.resolve( file )
 
-  var fw = watcher.files[ filepath ]
+  var fw = _fileWatchers[ filepath ]
 
   if ( fw ) {
     // already watching
     DEBUG.LOG && log( '(ignored) file already being watched' )
   } else {
     // add new file watcher
-    fw = createFileWatcher( watcher, filepath )
-
-    // initFlagged indicates that this file was added to the watch list
-    // during the same tick (nodejs process tick)
-    if ( initFlagged === true ) {
-      fw.initFlagged = true
-    }
-
-    fw.exists = false
-
-    promote( fw )
-
-    watcher.fileCounter++
-    watcher.files[ filepath ] = fw
+    fw = createFileWatcher( filepath )
+    _fileWatchers[ filepath ] = fw
   }
+
+  watcher.files[ filepath ] = fw
+  fw.watchers[ watcher.id ] = watcher
+  watcher.fileCounter++
+
+  // initFlagged indicates that this file was added to the watch list
+  // during the same tick (nodejs process tick)
+  if ( initFlagged === true ) {
+    fw.initFlagged = true
+  }
+
+  // since we have not polled yet we do not know if the
+  // file actually exists on the disk already (usually it
+  // does)
+  fw.exists = false
+
+  promote( fw )
 }
 
 function unwatchFile ( watcher, file ) {
   var filepath = path.resolve( file )
 
-  var fw = watcher.files[ filepath ]
+  var fw = _fileWatchers[ filepath ]
+  var wfw = watcher.files[ filepath ]
 
-  if ( fw ) {
-    fw.close()
-    watcher.fileCounter--
-    delete watcher.files[ filepath ]
-  } else {
+  if ( !fw && !wfw ) {
     // already unwatched
     DEBUG.LOG && log( '(ignored) file already unwatched' )
+    return
+  }
+
+  if ( wfw ) {
+    delete watcher.files[ filepath ]
+    watcher.fileCounter--
+  }
+
+  if ( fw ) {
+    delete fw.watchers[ watcher.id ]
+
+    if ( isFileWatcherEmpty( fw ) ) {
+      // close fileWatcher since nobody is watching it anymore
+      fw.close()
+      delete _fileWatchers[ filepath ]
+    }
+  }
+
+  if ( Object.keys( _fileWatchers ).length === 0 ) {
+    clearTimeout( statsFunction.timeout )
+    statsFunction.timeout = undefined
   }
 }
 
-function createFileWatcher ( watcher, filepath ) {
+function isFileWatcherEmpty ( fw ) {
+  return ( Object.keys( fw.watchers ).length <= 0 )
+}
+
+function createFileWatcher ( filepath ) {
   // console.log( 'creating fileWatcher: ' + filepath )
   filepath = path.resolve( filepath )
 
   var fw = {
-    watcher: watcher,
     filepath: filepath,
+    watchers: {},
     log: {}
   }
 
   fw.close = function () {
     clearTimeout( fw.timeout )
+    // clearTimeout( fw.fileContentTimeout )
     fw.closed = true
   }
 
@@ -539,7 +589,7 @@ function schedulePoll ( fw, forcedInterval ) {
     }
   }
 
-  var opts = fw.watcher.opts
+  var opts = _options
   if ( opts.minInterval && interval < opts.minInterval ) {
     interval = opts.minInterval
   }
@@ -583,15 +633,13 @@ function pollFile ( fw ) {
 
     if ( fw.locked !== true ) throw new Error( 'fw was not locked prior to fs.stat' )
 
-    if ( !fw.watcher.files[ fw.filepath ] ) {
+    if ( isFileWatcherEmpty( fw ) ) {
       // TODO -- this isn't a legit error probably
       // -> file was just removed from the watch list
       // during its polling
-      //
-      // fileWatcher has been removed
-      var msg = 'fileWatcher has been removed'
-      throw new Error( msg )
-      // return undefined
+      DEBUG.LOG && log( 'fw is empty during fs.stat' )
+      fw.close()
+      return undefined
     }
 
     // TODO stats
@@ -599,7 +647,7 @@ function pollFile ( fw ) {
     if ( fw._lastPollTime ) {
       var delta = ( now - fw._lastPollTime )
 
-      var _wstats = fw.watcher.stats
+      var _wstats = _stats
       _wstats.pollCounter++
 
       if ( delta > _wstats.maxPollTime ) _wstats.maxPollTime = delta
@@ -640,7 +688,7 @@ function pollFile ( fw ) {
       getEnv( 'DEV' ) && console.log( ' == fs.stat OK == ' )
 
       // debugging helpers
-      var debug = fw.watcher.files[ fw.filepath ]._debug
+      var debug = fw._debug
       if ( debug ) {
         if ( debug.removeAfterFSStat ) {
           debug.removeAfterFSStat = false
@@ -1013,13 +1061,17 @@ function dispatchPendingEvent ( fw ) {
         promote( fw )
       }
 
-      if ( typeof fw.watcher.callback === 'function' ) {
-        fw.watcher.callback( evt, fw.filepath, fw._stats )
-      }
+      Object.keys( fw.watchers ).forEach( function ( key ) {
+        var watcher = fw.watchers[ key ]
 
-      var evtCallbacks = fw.watcher.evtCallbacks[ evt ] || []
-      evtCallbacks.forEach( function ( evtCallback ) {
-        return evtCallback( fw.filepath, fw._stats )
+        if ( typeof watcher.callback === 'function' ) {
+          watcher.callback( evt, fw.filepath, fw._stats )
+        }
+
+        var evtCallbacks = watcher.evtCallbacks[ evt ] || []
+        evtCallbacks.forEach( function ( evtCallback ) {
+          return evtCallback( fw.filepath, fw._stats )
+        } )
       } )
     }, TRIGGER_DELAY )
   }
@@ -1072,10 +1124,12 @@ function setFileContent ( fw, content ) {
 //   fw.mtime = stats.mtime
 // }
 
+// keep track of the top (atm 10) actively changing files
+// by setting their active flag thus prioritizing their polling
 function promote ( fw ) {
   if ( fw.active ) return
 
-  var list = fw.watcher.activeList
+  var list = _activeList
   var inserted = false
 
   if ( fw.mtime ) {
@@ -1148,7 +1202,7 @@ function updatePollingInterval ( fw ) {
     }
   }
 
-  var stats = fw.watcher.stats
+  var stats = _stats
 
   if ( stats.cpu ) {
     fw.pollInterval = (
