@@ -542,7 +542,14 @@ function createFileWatcher ( filepath ) {
     clearTimeout( fw.timeout )
     // clearTimeout( fw.fileContentTimeout )
     fw.closed = true
-    delete _fileWatchers[ filepath ]
+
+    Object.keys( fw.watchers ).forEach( function ( key ) {
+      var watcher = fw.watchers[ key ]
+      // clear the file from the watch list of the wathers
+      delete watcher.files[ fw.filepath ]
+    } )
+
+    delete _fileWatchers[ fw.filepath ]
   }
 
   // start polling the filepath
