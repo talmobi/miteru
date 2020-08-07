@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "prepublish": "npm test",
-    "build": "browserify --node --no-bundle-external --standalone miteru -t [ babelify --presets [ env ] ] src/index.js -o dist/miteru.js 2>&1 | wooster",
+    "build": "browserify --node --no-bundle-external --standalone miteru -t [ babelify --presets [ @babel/preset-env ] ] src/index.js -o dist/miteru.js 2>&1 | wooster",
     "wooster": "npm run pass 2>&1 | wooster",
     "lint": "spacestandard --fix src/**/*.js cli.js",
     "pass": "passlint src/*.js dist/*.js cli.js",
@@ -45,10 +45,10 @@
     "redstar": "0.0.2"
   },
   "devDependencies": {
-    "babel-core": "~6.26.0",
-    "babel-preset-env": "~1.6.1",
-    "babelify": "~7.3.0",
-    "browserify": "~14.4.0",
+    "@babel/core": "~7.11.1",
+    "@babel/preset-env": "~7.11.0",
+    "babelify": "~10.0.0",
+    "browserify": "~16.5.2",
     "faucet": "0.0.1",
     "mkdirp": "~0.5.1",
     "ncp": "~2.0.0",
