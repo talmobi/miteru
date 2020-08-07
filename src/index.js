@@ -146,7 +146,9 @@ process.on( 'exit', function () {
 
 var api = module.exports = {}
 
-api._fileWatchers = _fileWatchers
+api.getWatched = function getWatched () {
+  return Object.keys( _fileWatchers ).sort()
+}
 
 var _watcherIds = 1
 
