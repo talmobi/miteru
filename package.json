@@ -53,7 +53,7 @@
     "browserify": "~16.5.2",
     "mkdirp": "~0.5.1",
     "ncp": "~2.0.0",
-    "nyc": "~15.0.0",
+    "nyc": "~15.1.0",
     "passlint": "0.0.13",
     "rimraf": "~2.6.1",
     "spacestandard": "~0.2.0",
