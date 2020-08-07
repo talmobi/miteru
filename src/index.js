@@ -741,9 +741,30 @@ function pollFile ( fw ) {
       }
 
       if ( type !== 'file' ) {
-        throw new Error(
-          'only filetype of "file" is supported, found filetype [ ' + type + ' ]'
-        )
+        var message = ( 'only filetype of "file" is supported, found filetype [ ' + type + ' ]' )
+
+        // emit to watchers
+        Object.keys( fw.watchers ).forEach( function ( key ) {
+          var watcher = fw.watchers[ key ]
+
+          var evt = 'error'
+
+          if ( typeof watcher.callback === 'function' ) {
+            watcher.callback( evt, fw.filepath, message )
+          }
+
+          var evtCallbacks = watcher.evtCallbacks[ evt ] || []
+          evtCallbacks.forEach( function ( evtCallback ) {
+            return evtCallback( fw.filepath, message )
+          } )
+
+          // delete the file from being watched anymore
+          delete watcher.files[ fw.filepath ]
+          // delete the watcher reference from the fw
+          delete fw.watchers[ key ]
+        } )
+
+        return fw.close() // stop polling the directory
       }
 
       var existedPreviously = ( fw.exists === true )
