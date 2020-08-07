@@ -147,6 +147,8 @@ process.on( 'exit', function () {
 var api = module.exports = {}
 
 api.getWatched = function getWatched () {
+  // JavaScript doesn't guarantee ordering here so we sort
+  // it alphabetically for consistency
   return Object.keys( _fileWatchers ).sort()
 }
 
