@@ -287,7 +287,7 @@ api.watch = function watch ( file, opts, callback ) {
     return watcher // chaining
   }
 
-  watcher.getWatched = function () {
+  watcher.getWatched = function getWatched () {
     // TODO caching? premature optimization?
     // JavaScript doesn't guarantee ordering here so we sort
     // it alphabetically for consistency
