@@ -515,7 +515,6 @@ function unwatchFile ( watcher, file ) {
     if ( isFileWatcherEmpty( fw ) ) {
       // close fileWatcher since nobody is watching it anymore
       fw.close()
-      delete _fileWatchers[ filepath ]
     }
   }
 
@@ -543,6 +542,7 @@ function createFileWatcher ( filepath ) {
     clearTimeout( fw.timeout )
     // clearTimeout( fw.fileContentTimeout )
     fw.closed = true
+    delete _fileWatchers[ filepath ]
   }
 
   // start polling the filepath
