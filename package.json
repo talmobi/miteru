@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "minimatch": "~3.0.4",
-    "minimist": "~1.2.0",
+    "minimist": "~1.2.5",
     "redstar": "0.0.2"
   },
   "devDependencies": {
@@ -55,7 +55,7 @@
     "nyc": "~15.0.0",
     "passlint": "0.0.13",
     "rimraf": "~2.6.1",
-    "spacestandard": "0.0.6",
+    "spacestandard": "~0.2.0",
     "tape": "~4.6.3",
     "wooster": "~0.3.3",
     "wtfnode": "~0.8.1"
