@@ -202,6 +202,12 @@ test( 'watch a single file', function ( t ) {
         'expected files (0) still being watched'
       )
 
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
       w.close()
 
       setTimeout( function () {
