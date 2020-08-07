@@ -1196,13 +1196,9 @@ function promote ( fw ) {
 function updatePollingInterval ( fw ) {
   var filepath = fw.filepath
 
-  // if ( fw.type === 'directory' ) {
-  //   fw.pollInterval = 300
-  //   return
-  // }
-
   if ( fw.type !== 'file' ) {
-    throw new Error( 'trying to update pollInterval on non-file type [' + fw.type + ']' )
+    fw.pollInterval = 3000
+    return
   }
 
   var now = Date.now()
