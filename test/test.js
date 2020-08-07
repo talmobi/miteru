@@ -345,7 +345,7 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
   } )
 } )
 
-test.only( 'watch a single file with multiple watchers', function ( t ) {
+test( 'watch a single file with multiple watchers', function ( t ) {
   t.timeoutAfter( 7500 )
 
   prepareTestFiles( function () {
