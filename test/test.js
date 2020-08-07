@@ -2,6 +2,8 @@ var rimraf = require( 'rimraf' )
 var mkdirp = require( 'mkdirp' )
 var ncp = require( 'ncp' ).ncp
 
+var wtfnode = require( 'wtfnode' )
+
 var fs = require( 'fs' )
 var path = require( 'path' )
 
