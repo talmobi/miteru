@@ -39,7 +39,6 @@ function run ( filepath ) {
   console.log( 't: ' + t )
   console.log( 'r: ' + r )
 
-
   return r
 }
 
@@ -1321,6 +1320,74 @@ test( 'loadEvent abortion', function ( t ) {
       }, 100 )
     }
 
+  } )
+} )
+
+test( 'attempt watch a directory and fail on error', function ( t ) {
+  t.timeoutAfter( 7500 )
+
+  prepareTestFiles( function () {
+    var filepath = path.join( __dirname, 'tmp' )
+
+    var expected = [
+      ''
+      , 'error'
+    ]
+
+    var buffer = [ '' ]
+
+    var w = miteru.watch( filepath, function ( evt, filepath ) {
+      switch ( evt ) {
+        case 'error':
+          buffer.push( evt )
+          break
+
+        default:
+          t.fail( 'non expected evt type found [ ' + evt + ' ]' )
+          buffer.push( evt )
+          break
+      }
+
+      // console.log( 'evt: ' + evt )
+      next()
+    } )
+
+    var actions = []
+
+    function next () {
+      var a = actions.shift()
+      if ( a ) {
+        a( function ( err ) {
+          if ( err ) throw err
+        } )
+      } else {
+        setTimeout( finish, ACTION_INTERVAL )
+      }
+    }
+
+    function finish () {
+      t.deepEqual(
+        buffer,
+        expected,
+        'expected output OK'
+      )
+
+      t.deepEqual(
+        w.getWatched(),
+        [],
+        'watcher expected files (0) still being watched'
+      )
+
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'miteru expected files (0) still being watched'
+      )
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
   } )
 } )
 
