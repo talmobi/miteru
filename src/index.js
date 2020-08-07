@@ -1094,6 +1094,7 @@ function dispatchPendingEvent ( fw ) {
         promote( fw )
       }
 
+      // emit to watchers
       Object.keys( fw.watchers ).forEach( function ( key ) {
         var watcher = fw.watchers[ key ]
 
