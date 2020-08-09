@@ -136,6 +136,7 @@ var _fileWatchers = {}
 // list of the most active files being watched ( and are thus
 // prioritised for polling ( faster polling ) )
 var _activeList = []
+var MAX_ACTIVE_LIST_LENGTH = 6
 
 var _options = {
   // minimum polling interval per file
