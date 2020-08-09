@@ -964,7 +964,7 @@ function pollFile ( fw ) {
         if ( sizeChanged || mtimeChanged || fileContentHasChanged ) {
           DEBUG.EVT && log( 'change: ' + fw.filepath )
           getEnv( 'DEV' ) && console.log(
-            'change evt --  size $1, mtime $2, fileContent $3: [$4]'
+            'change evt -- sizeChanged $1, mtimeChanged $2, fileContentHasChanged $3: [$4]'
               .replace( '$1', sizeChanged )
               .replace( '$2', mtimeChanged )
               .replace( '$3', fileContentHasChanged )
@@ -991,7 +991,7 @@ function pollFile ( fw ) {
           fw.initFlagged = false
           DEBUG.EVT && log( 'init: ' + fw.filepath )
           getEnv( 'DEV' ) && console.log(
-            'init evt -- size $1, mtime $2, fileContent $3: [$4]'
+            'init evt -- sizeChanged $1, mtimeChanged $2, fileContentHasChanged $3: [$4]'
               .replace( '$1', sizeChanged )
               .replace( '$2', mtimeChanged )
               .replace( '$3', fileContentHasChanged )
@@ -1002,7 +1002,7 @@ function pollFile ( fw ) {
         } else {
           DEBUG.EVT && log( 'add: ' + fw.filepath )
           getEnv( 'DEV' ) && console.log(
-            'add evt -- size $1, mtime $2, fileContent $3: [$4]'
+            'add evt -- sizeChanged $1, mtimeChanged $2, fileContentHasChanged $3: [$4]'
               .replace( '$1', sizeChanged )
               .replace( '$2', mtimeChanged )
               .replace( '$3', fileContentHasChanged )
