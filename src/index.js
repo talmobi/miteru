@@ -15,7 +15,6 @@ var MAX_ATTEMPTS = 5
 var ATTEMPT_INTERVAL = 25 // milliseconds
 
 var START_TIME = Date.now()
-var CPU_SMOOTHING_DELAY = 15000 // milliseconds
 
 var TRIGGER_DELAY = 1
 
@@ -155,6 +154,7 @@ process.on( 'exit', function () {
 var api = module.exports = {}
 
 api._MAX_ACTIVE_LIST_LENGTH = 6
+api._CPU_SMOOTHING_DELAY = 3000 // milliseconds
 
 api.getWatched = function getWatched () {
   // TODO caching? premature optimization?
@@ -1255,7 +1255,7 @@ function updatePollingInterval ( fw ) {
     }
   }
 
-  if ( ( Date.now() - START_TIME ) > CPU_SMOOTHING_DELAY ) {
+  if ( ( Date.now() - START_TIME ) > api._CPU_SMOOTHING_DELAY ) {
     var stats = _stats
 
     if ( stats.cpu ) {
