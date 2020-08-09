@@ -1195,8 +1195,8 @@ function promote ( fw ) {
 
   // trim and deactivate overflowing files
   while ( list.length > maxActiveListLength ) {
-    var fw = list.pop()
-    fw.active = false
+    var pop = list.pop()
+    pop.active = false
   }
 }
 
@@ -1266,7 +1266,6 @@ function updatePollingInterval ( fw ) {
 
     fw.pollInterval += stats.extraTime
   }
-
 
   if ( fw.active ) {
     // active files should always be fast
