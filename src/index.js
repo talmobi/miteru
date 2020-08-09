@@ -1269,6 +1269,7 @@ function updatePollingInterval ( fw ) {
     // active files should always be fast
     if ( fw.pollInterval > TEMPERATURE.WARM.INTERVAL ) {
       fw.pollInterval = TEMPERATURE.WARM.INTERVAL
+      fw.temperature = 'warm'
     }
   }
 
