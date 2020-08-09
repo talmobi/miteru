@@ -14,6 +14,9 @@ var NOEXIST_INTERVAL = 400 // special polling interval for files that do not exi
 var MAX_ATTEMPTS = 5
 var ATTEMPT_INTERVAL = 25 // milliseconds
 
+var START_TIME = Date.now()
+var CPU_SMOOTHING_DELAY = 15000 // milliseconds
+
 var TRIGGER_DELAY = 1
 
 var glob = require( 'redstar' )
@@ -1166,32 +1169,34 @@ function promote ( fw ) {
   if ( fw.active ) return
 
   var list = _activeList
-  var inserted = false
+  var shouldSort = false
 
-  if ( fw.mtime ) {
-    for ( var i = 0; i < list.length; ++i ) {
-      var item = list[ i ]
-      if ( ( !item.mtime || item.mtime < fw.mtime ) && item !== fw ) {
-        list.splice( i, 0, fw ) // insert that shit
-        fw.active = true
-        // console.log( item.mtime )
-        // console.log( fw.mtime )
-        // console.log( 'promotion! [' + fw.filepath + ']' )
-        inserted = true
-        break
-      }
+  if ( list.length < MAX_ACTIVE_LIST_LENGTH ) {
+    fw.active = true
+    list.push( fw )
+    shouldSort = true
+  } else {
+    // only need to compare with the last item because it's
+    // pre-sorted
+    var lastItem = list[ list.length - 1 ]
+
+    if ( lastItem && fw.mtime > lastItem.mtime ) {
+      fw.active = true
+      list.push( fw )
+      shouldSort = true
     }
   }
 
-  if ( !inserted && list.length < 10 ) {
-    list.push( fw )
-    fw.active = true
-    // console.log( 'promotion pushed [' + fw.filepath + ']' )
+  if ( shouldSort ) {
+    list.sort( function ( a, b ) {
+      return b.mtime - a.mtime
+    } )
   }
 
-  while ( list.length > 10 ) {
-    var pop = list.pop()
-    pop.active = false
+  // trim and deactivate overflowing files
+  while ( list.length > MAX_ACTIVE_LIST_LENGTH ) {
+    var fw = list.pop()
+    fw.active = false
   }
 }
 
@@ -1236,13 +1241,18 @@ function updatePollingInterval ( fw ) {
 
   var stats = _stats
 
-  if ( stats.cpu ) {
-    fw.pollInterval = (
-      fw.pollInterval + Math.pow( 1 + stats.cpu, 1.75 )
-    )
+  if ( ( Date.now() - START_TIME ) > CPU_SMOOTHING_DELAY ) {
+    var stats = _stats
+
+    if ( stats.cpu ) {
+      fw.pollInterval = (
+        fw.pollInterval + Math.pow( 1 + stats.cpu, 1.75 )
+      )
+    }
+
+    fw.pollInterval += stats.extraTime
   }
 
-  fw.pollInterval += stats.extraTime
 
   if ( fw.active ) {
     // active files should always be fast
