@@ -136,7 +136,6 @@ var _fileWatchers = {}
 // list of the most active files being watched ( and are thus
 // prioritised for polling ( faster polling ) )
 var _activeList = []
-var MAX_ACTIVE_LIST_LENGTH = 6
 
 var _options = {
   // minimum polling interval per file
@@ -154,6 +153,8 @@ process.on( 'exit', function () {
 } )
 
 var api = module.exports = {}
+
+api._MAX_ACTIVE_LIST_LENGTH = 6
 
 api.getWatched = function getWatched () {
   // TODO caching? premature optimization?
@@ -1168,7 +1169,7 @@ function promote ( fw ) {
   var list = _activeList
   var shouldSort = false
 
-  var maxActiveListLength = ( api.MAX_ACTIVE_LIST_LENGTH == null ? MAX_ACTIVE_LIST_LENGTH : api.MAX_ACTIVE_LIST_LENGTH )
+  var maxActiveListLength = api._MAX_ACTIVE_LIST_LENGTH
 
   if ( list.length < maxActiveListLength ) {
     fw.active = true
