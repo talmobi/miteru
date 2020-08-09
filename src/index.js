@@ -662,6 +662,8 @@ function pollFile ( fw ) {
       var _wstats = _stats
       _wstats.pollCounter++
 
+      // TODO keep track of max and min from currently watched files, not
+      // historical max/min
       if ( delta > _wstats.maxPollTime ) _wstats.maxPollTime = delta
       if ( delta < _wstats.minPollTime ) _wstats.minPollTime = delta
     }
