@@ -785,14 +785,15 @@ function pollFile ( fw ) {
       var skipEdgeCase = ( stats.size >= EDGE_CASE_MAX_SIZE )
       var isEdgy = ( ( Date.now() - stats.mtime ) < EDGE_CASE_INTERVAL )
 
-      var shouldCompareFileContents = ALWAYS_COMPARE_FILECONTENT || false
+      isEdgy && getEnv( 'DEV' ) && console.log( 'is edgy' )
 
-      if ( isEdgy && !skipEdgeCase ) {
-        getEnv( 'DEV' ) && console.log( 'is edgy' )
+      var shouldCompareFileContents = (
+        ALWAYS_COMPARE_FILECONTENT ||
+
         // during edge case period we can't rely on mtime or file size alone
         // and we need to compare the actual contents of the file
-        shouldCompareFileContents = true
-      }
+        ( isEdgy && !skipEdgeCase )
+      )
 
       var fileContentHasChanged
 
