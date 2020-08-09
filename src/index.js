@@ -129,7 +129,12 @@ function log ( msg ) {
 }
 
 var _running = true
+
+// list of all files being watched ( and continuously polled )
 var _fileWatchers = {}
+
+// list of the most active files being watched ( and are thus
+// prioritised for polling ( faster polling ) )
 var _activeList = []
 
 var _options = {
