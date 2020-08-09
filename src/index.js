@@ -1168,7 +1168,9 @@ function promote ( fw ) {
   var list = _activeList
   var shouldSort = false
 
-  if ( list.length < MAX_ACTIVE_LIST_LENGTH ) {
+  var maxActiveListLength = ( api.MAX_ACTIVE_LIST_LENGTH == null ? MAX_ACTIVE_LIST_LENGTH : api.MAX_ACTIVE_LIST_LENGTH )
+
+  if ( list.length < maxActiveListLength ) {
     fw.active = true
     list.push( fw )
     shouldSort = true
@@ -1191,7 +1193,7 @@ function promote ( fw ) {
   }
 
   // trim and deactivate overflowing files
-  while ( list.length > MAX_ACTIVE_LIST_LENGTH ) {
+  while ( list.length > maxActiveListLength ) {
     var fw = list.pop()
     fw.active = false
   }
