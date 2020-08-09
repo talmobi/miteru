@@ -600,16 +600,6 @@ function schedulePoll ( fw, forcedInterval ) {
     delete fw._noExistsTime
   }
 
-  // if fw is not awake then cap the polling interval
-  // this prevents recently modified/created files prior to watching
-  // from being considered as HOT FILES, i.e., files that are
-  // actively being modified
-  if ( !fw._awake && !fw.active ) {
-    if ( interval < TEMPERATURE.DORMANT_INTERVAL ) {
-      interval = TEMPERATURE.DORMANT_INTERVAL
-    }
-  }
-
   var opts = _options
   if ( opts.minInterval && interval < opts.minInterval ) {
     interval = opts.minInterval
@@ -1220,32 +1210,46 @@ function updatePollingInterval ( fw ) {
     if ( delta < TEMPERATURE.HOT.AGE ) {
       if ( fw.pollInterval !== TEMPERATURE.HOT.INTERVAL ) {
         DEBUG.TEMPERATURE && log( 'HOT file: ' + filepath )
+        fw.temperature = 'hot'
         fw.pollInterval = TEMPERATURE.HOT.INTERVAL
       }
     } else if ( delta < TEMPERATURE.SEMI_HOT.AGE ) {
       if ( fw.pollInterval !== TEMPERATURE.SEMI_HOT.INTERVAL ) {
         DEBUG.TEMPERATURE && log( 'SEMI_HOT file: ' + filepath )
+        fw.temperature = 'semi_hot'
         fw.pollInterval = TEMPERATURE.SEMI_HOT.INTERVAL
       }
     } else if ( delta < TEMPERATURE.WARM.AGE ) {
       if ( fw.pollInterval !== TEMPERATURE.WARM.INTERVAL ) {
         DEBUG.TEMPERATURE && log( 'WARM file: ' + filepath )
+        fw.temperature = 'warm'
         fw.pollInterval = TEMPERATURE.WARM.INTERVAL
       }
     } else if ( delta < TEMPERATURE.COLD.AGE ) {
       if ( fw.pollInterval !== TEMPERATURE.COLD.INTERVAL ) {
         DEBUG.TEMPERATURE && log( 'COLD file: ' + filepath )
+        fw.temperature = 'cold'
         fw.pollInterval = TEMPERATURE.COLD.INTERVAL
       }
     } else {
       if ( fw.pollInterval !== TEMPERATURE.COLDEST_INTERVAL ) {
         DEBUG.TEMPERATURE && log( 'COLDEST file: ' + filepath )
+        fw.temperature = 'coldest'
         fw.pollInterval = TEMPERATURE.COLDEST_INTERVAL
       }
     }
   }
 
-  var stats = _stats
+  // if fw is not awake then cap the polling interval
+  // this prevents recently modified/created files prior to watching
+  // from being considered as HOT FILES, i.e., files that are
+  // actively being modified
+  if ( !fw._awake && !fw.active ) {
+    if ( fw.pollInterval < TEMPERATURE.DORMANT_INTERVAL ) {
+      fw.pollInterval = TEMPERATURE.DORMANT_INTERVAL
+      fw.temperature = 'dormant'
+    }
+  }
 
   if ( ( Date.now() - START_TIME ) > CPU_SMOOTHING_DELAY ) {
     var stats = _stats
