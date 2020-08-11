@@ -1274,7 +1274,7 @@ function updatePollingInterval ( fw ) {
     }
   }
 
-  if ( ( Date.now() - START_TIME ) > api._CPU_SMOOTHING_DELAY ) {
+  if ( !api._disableCpuSmoothing && ( ( Date.now() - START_TIME ) > api._CPU_SMOOTHING_DELAY ) ) {
     var stats = _stats
 
     if ( stats.cpu ) {

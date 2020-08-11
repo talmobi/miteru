@@ -1457,7 +1457,8 @@ test( 'test polling interval changes based on mtime (temperatures)', function ( 
 
     // delay cpu smoothing to never activate during this test so the polling
     // intervals stay constant
-    miteru._CPU_SMOOTHING_DELAY = 15000
+    const lastCpuSmoothing = miteru._disableCpuSmoothing
+    miteru._disableCpuSmoothing = true
 
     var w = miteru.watch( filepath, function ( evt, filepath ) {
       switch ( evt ) {
@@ -1523,6 +1524,8 @@ test( 'test polling interval changes based on mtime (temperatures)', function ( 
     }
 
     function finish () {
+      miteru._disableCpuSmoothing = lastCpuSmoothing
+
       t.deepEqual(
         buffer,
         expected,
