@@ -925,6 +925,264 @@ test( 'watch a glob of files', function ( t ) {
   } )
 } )
 
+test( 'check file activity flagging from glob', function ( t ) {
+  t.timeoutAfter( 3000 )
+
+  prepareTestFiles( function () {
+    var filepath1 = path.join( __dirname, 'tmp', 'foo.js' )
+    var filepath2 = path.join( __dirname, 'tmp', 'bar.js' )
+    var filepath3 = path.join( __dirname, 'tmp', 'zoo.txt' )
+
+    var timestamp = Date.now()
+
+    var expected = [
+      '',
+      'init: ' + filepath1,
+      'init: ' + filepath2,
+      'init: ' + filepath3
+    ]
+
+    var buffer = [ '' ]
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath1,
+          filepath2,
+          filepath3
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    fs.writeFileSync( filepath1, 'foo' )
+    fs.writeFileSync( filepath2, 'foo' )
+    fs.writeFileSync( filepath3, 'foo' )
+
+    _lastMaxActiveListLength = miteru._MAX_ACTIVE_LIST_LENGTH
+    miteru._MAX_ACTIVE_LIST_LENGTH = 2
+
+    var w = miteru.watch( 'test/tmp/**/*.*', function ( evt, filepath ) {
+      switch ( evt ) {
+        case 'init':
+          buffer.push( 'init: ' + filepath )
+          break
+
+        case 'add':
+          buffer.push( 'add: ' + filepath )
+          break
+
+        case 'change':
+          buffer.push( 'change: ' + filepath )
+          break
+
+        default:
+          t.fail( 'unrecognized watch evt: [ ' + evt + ' ]' )
+          buffer.push( evt + ': ' + filepath )
+          break
+      }
+    } )
+
+    setTimeout( finish, ACTION_INTERVAL )
+
+    function finish () {
+      miteru._MAX_ACTIVE_LIST_LENGTH = _lastMaxActiveListLength
+
+      t.equal(
+        miteru._getFileWatcher( filepath1 ).active, false
+      )
+      t.equal(
+        miteru._getFileWatcher( filepath2 ).active, true
+      )
+      t.equal(
+        miteru._getFileWatcher( filepath3 ).active, true
+      )
+
+      t.deepEqual(
+        buffer.sort(),
+        expected.sort(),
+        'expected output OK'
+      )
+
+      t.deepEqual(
+        w.getWatched(),
+        [
+          filepath1,
+          filepath2,
+          filepath3
+        ].sort(),
+        'expected files (3) still being watched'
+      )
+
+      w.unwatch( filepath1 )
+
+      t.deepEqual(
+        w.getWatched(),
+        [
+          filepath2, 
+          filepath3,
+        ],
+        'expected files (2) still being watched'
+      )
+
+      w.unwatch( '**' )
+
+      t.deepEqual(
+        w.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
+      w.close()
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  } )
+} )
+
+test.only( 'check file activity flagging', function ( t ) {
+  t.timeoutAfter( 7500 )
+
+  prepareTestFiles( function () {
+    var filepath1 = path.join( __dirname, 'tmp', 'filepath1.js' )
+    var filepath2 = path.join( __dirname, 'tmp', 'filepath2.js' )
+    var filepath3 = path.join( __dirname, 'tmp', 'filepath3.js' )
+
+    var timestamp = Date.now()
+
+    var expected = [
+      '',
+
+      filepath1 + ':' + 'true',
+      filepath2 + ':' + 'undefined',
+      filepath3 + ':' + 'undefined',
+
+      filepath1 + ':' + 'true',
+      filepath2 + ':' + 'true',
+      filepath3 + ':' + 'undefined',
+
+      filepath1 + ':' + 'false',
+      filepath2 + ':' + 'true',
+      filepath3 + ':' + 'true',
+
+      filepath1 + ':' + 'true',
+      filepath2 + ':' + 'false',
+      filepath3 + ':' + 'true'
+    ]
+
+    var buffer = [ '' ]
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath1,
+          filepath2,
+          filepath3
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    fs.writeFileSync( filepath1, 'foo' )
+    fs.writeFileSync( filepath2, 'foo' )
+    fs.writeFileSync( filepath3, 'foo' )
+
+    _lastMaxActiveListLength = miteru._MAX_ACTIVE_LIST_LENGTH
+    miteru._MAX_ACTIVE_LIST_LENGTH = 2
+
+    var w = miteru.watch( filepath1, function ( evt, filepath ) {
+      // do nothing
+      console.log( evt + ':' + filepath )
+      next()
+    } )
+
+    var actions = [
+      function ( next ) {
+        buffer.push( filepath1 + ':' + miteru._getFileWatcher( filepath1 ).active )
+        buffer.push( filepath2 + ':' + miteru._getFileWatcher( filepath2 ) )
+        buffer.push( filepath3 + ':' + miteru._getFileWatcher( filepath3 ) )
+        fs.writeFileSync( filepath2, 'bar' )
+        w.add( filepath2 )
+      },
+      function ( next ) {
+        buffer.push( filepath1 + ':' + miteru._getFileWatcher( filepath1 ).active )
+        buffer.push( filepath2 + ':' + miteru._getFileWatcher( filepath2 ).active )
+        buffer.push( filepath3 + ':' + miteru._getFileWatcher( filepath3 ) )
+        fs.writeFileSync( filepath3, 'bar' )
+        w.add( filepath3 )
+      },
+      function ( next ) {
+        buffer.push( filepath1 + ':' + miteru._getFileWatcher( filepath1 ).active )
+        buffer.push( filepath2 + ':' + miteru._getFileWatcher( filepath2 ).active )
+        buffer.push( filepath3 + ':' + miteru._getFileWatcher( filepath3 ).active )
+        fs.writeFileSync( filepath1, 'bar' )
+      }
+    ]
+
+    // setTimeout( next, ACTION_INTERVAL )
+
+    function next () {
+      var a = actions.shift()
+      if ( a ) {
+        a( function ( err ) {
+          if ( err ) throw err
+          // setTimeout( next, ACTION_INTERVAL )
+        } )
+      } else {
+        setTimeout( finish, ACTION_INTERVAL )
+      }
+    }
+
+    function finish () {
+      miteru._MAX_ACTIVE_LIST_LENGTH = _lastMaxActiveListLength
+
+      buffer.push( filepath1 + ':' + miteru._getFileWatcher( filepath1 ).active )
+      buffer.push( filepath2 + ':' + miteru._getFileWatcher( filepath2 ).active )
+      buffer.push( filepath3 + ':' + miteru._getFileWatcher( filepath3 ).active )
+
+      t.deepEqual(
+        buffer,
+        expected,
+        'expected output OK'
+      )
+
+      t.deepEqual(
+        w.getWatched(),
+        [
+          filepath1,
+          filepath2,
+          filepath3
+        ],
+        'expected files (2) still being watched'
+      )
+
+      w.unwatch( filepath1 )
+
+      t.deepEqual(
+        w.getWatched(),
+        [ filepath2, filepath3 ],
+        'expected files (2) still being watched'
+      )
+
+      w.unwatch( '**' )
+
+      t.deepEqual(
+        w.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
+      w.close()
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  } )
+} )
+
 test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
   t.timeoutAfter( 7500 )
 
