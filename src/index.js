@@ -163,6 +163,25 @@ api.getWatched = function getWatched () {
   return Object.keys( _fileWatchers ).sort()
 }
 
+api.getPollingInterval = function getPollingInterval ( file ) {
+  var filepath = path.resolve( file )
+  var fw = _fileWatchers[ filepath ]
+  return fw && fw.pollInterval
+}
+
+// return internal fw object
+// TODO check pollInterval and temperature
+api._getFileWatcher = function _getFileWatcher ( file ) {
+  var filepath = path.resolve( file )
+  return _fileWatchers[ filepath ]
+}
+
+api.getStats = function getStats () {
+  var s = Object.assign( {}, _stats )
+  delete s.report
+  return s
+}
+
 var _watcherIds = 1
 
 var _stats = {
