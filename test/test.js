@@ -1391,6 +1391,173 @@ test( 'attempt watch a directory and fail on error', function ( t ) {
   } )
 } )
 
+test( 'test polling interval changes based on mtime (temperatures)', function ( t ) {
+  t.timeoutAfter( 7500 )
+
+  prepareTestFiles( function () {
+    var filepath = path.join( __dirname, 'tmp', 'main.js' )
+
+    // polling interval intensities based on delta time ( time since last change )
+    var TEMPERATURE = {
+      HOT: {
+        AGE: ( 1000 * 60 * 1 ), // 1 min
+        INTERVAL: 50
+      },
+      SEMI_HOT: {
+        AGE: ( 1000 * 60 * 15 ), // 15 min
+        INTERVAL: 88
+      },
+      WARM: {
+        AGE: ( 1000 * 60 * 60 * 4 ), // 4 hours
+        INTERVAL: 200
+      },
+      COLD: {
+        AGE: ( 1000 * 60 * 60 * 24 ), // 24 hours
+        INTERVAL: 333
+      },
+      COLDEST_INTERVAL: 625,
+      DORMANT_INTERVAL: 200
+    }
+
+    var expected = [
+      '',
+      'init',
+      TEMPERATURE.COLDEST_INTERVAL,
+      'coldest',
+      'change',
+      TEMPERATURE.COLD.INTERVAL,
+      'cold',
+      'change',
+      TEMPERATURE.WARM.INTERVAL,
+      'warm',
+      'change',
+      TEMPERATURE.SEMI_HOT.INTERVAL,
+      'semi_hot',
+      'change',
+      TEMPERATURE.HOT.INTERVAL,
+      'hot'
+    ]
+
+    var buffer = [ '' ]
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    fs.writeFileSync( filepath, 'module.exports = "abra"' )
+    fs.utimesSync( filepath, Date.now(), 1 )
+
+    // don't add any files to active list that gets faster poll intervals
+    miteru._MAX_ACTIVE_LIST_LENGTH = 0
+
+    // delay cpu smoothing to never activate during this test so the polling
+    // intervals stay constant
+    miteru._CPU_SMOOTHING_DELAY = 15000
+
+    var w = miteru.watch( filepath, function ( evt, filepath ) {
+      switch ( evt ) {
+        case 'init':
+          break
+
+        case 'change':
+          break
+
+        default:
+          t.fail( 'unrecognized watch evt: [ ' + evt + ' ]' )
+          break
+      }
+
+      var interval = miteru.getPollingInterval( filepath )
+      var temperature = ( miteru._getFileWatcher( filepath ).temperature )
+
+      console.log( evt )
+      console.log( temperature )
+      console.log( interval )
+
+      buffer.push( evt )
+      buffer.push( interval )
+      buffer.push( temperature )
+
+      setTimeout( next, 1000 )
+    } )
+
+    var actions = [
+      function ( next ) {
+        var time = Date.now() - TEMPERATURE.COLD.AGE
+        var unixTime = time / 1000
+        fs.utimesSync( filepath, Date.now(), unixTime + 5 )
+      },
+      function ( next ) {
+        var time = Date.now() - TEMPERATURE.WARM.AGE
+        var unixTime = time / 1000
+        fs.utimesSync( filepath, Date.now(), unixTime + 5 )
+      },
+      function ( next ) {
+        var time = Date.now() - TEMPERATURE.SEMI_HOT.AGE
+        var unixTime = time / 1000
+        fs.utimesSync( filepath, Date.now(), unixTime + 5 )
+      },
+      function ( next ) {
+        var time = Date.now() - TEMPERATURE.HOT.AGE
+        var unixTime = time / 1000
+        fs.utimesSync( filepath, Date.now(), unixTime + 5 )
+      }
+    ]
+
+    // setTimeout( next, ACTION_INTERVAL )
+
+    function next () {
+      var a = actions.shift()
+      if ( a ) {
+        a( function ( err ) {
+          if ( err ) throw err
+        } )
+      } else {
+        setTimeout( finish, ACTION_INTERVAL )
+      }
+    }
+
+    function finish () {
+      t.deepEqual(
+        buffer,
+        expected,
+        'expected output OK'
+      )
+
+      t.deepEqual(
+        w.getWatched(),
+        [ filepath ],
+        'expected files (1) still being watched'
+      )
+
+      w.unwatch( filepath )
+
+      t.deepEqual(
+        w.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
+      w.close()
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  } )
+} )
+
 test( 'exit process after watcher is closed', function ( t ) {
   t.timeoutAfter( 7500 )
 
