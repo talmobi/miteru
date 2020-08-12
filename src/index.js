@@ -1267,31 +1267,31 @@ function updatePollingInterval ( fw ) {
   if ( fw ) {
     if ( delta < TEMPERATURE.HOT.AGE ) {
       if ( fw.pollInterval !== TEMPERATURE.HOT.INTERVAL ) {
-        DEBUG.TEMPERATURE && log( 'HOT file: ' + filepath )
+        debugLog( 'temperature', 'HOT file: ' + filepath )
         fw.temperature = 'hot'
         fw.pollInterval = TEMPERATURE.HOT.INTERVAL
       }
     } else if ( delta < TEMPERATURE.SEMI_HOT.AGE ) {
       if ( fw.pollInterval !== TEMPERATURE.SEMI_HOT.INTERVAL ) {
-        DEBUG.TEMPERATURE && log( 'SEMI_HOT file: ' + filepath )
+        debugLog( 'temperature', 'SEMI_HOT file: ' + filepath )
         fw.temperature = 'semi_hot'
         fw.pollInterval = TEMPERATURE.SEMI_HOT.INTERVAL
       }
     } else if ( delta < TEMPERATURE.WARM.AGE ) {
       if ( fw.pollInterval !== TEMPERATURE.WARM.INTERVAL ) {
-        DEBUG.TEMPERATURE && log( 'WARM file: ' + filepath )
+        debugLog( 'temperature', 'WARM file: ' + filepath )
         fw.temperature = 'warm'
         fw.pollInterval = TEMPERATURE.WARM.INTERVAL
       }
     } else if ( delta < TEMPERATURE.COLD.AGE ) {
       if ( fw.pollInterval !== TEMPERATURE.COLD.INTERVAL ) {
-        DEBUG.TEMPERATURE && log( 'COLD file: ' + filepath )
+        debugLog( 'temperature', 'COLD file: ' + filepath )
         fw.temperature = 'cold'
         fw.pollInterval = TEMPERATURE.COLD.INTERVAL
       }
     } else {
       if ( fw.pollInterval !== TEMPERATURE.COLDEST.INTERVAL ) {
-        DEBUG.TEMPERATURE && log( 'COLDEST file: ' + filepath )
+        debugLog( 'temperature', 'COLDEST file: ' + filepath )
         fw.temperature = 'coldest'
         fw.pollInterval = TEMPERATURE.COLDEST.INTERVAL
       }
