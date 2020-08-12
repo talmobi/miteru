@@ -980,10 +980,18 @@ test( 'check file activity flagging from glob', function ( t ) {
 
     var buffer = [ '' ]
 
+    miteru.reset()
+
     t.deepEqual(
       miteru.getWatched(),
       [],
       'miteru clean and ready for next test'
+    )
+
+    t.deepEqual(
+      miteru._activeList,
+      [],
+      'miteru._activeList clean before test'
     )
 
     t.ok(
@@ -1104,10 +1112,18 @@ test( 'check file activity flagging', function ( t ) {
 
     var timestamp = Date.now()
 
+    miteru.reset()
+
     t.deepEqual(
       miteru.getWatched(),
       [],
       'miteru clean and ready for next test'
+    )
+
+    t.deepEqual(
+      miteru._activeList,
+      [],
+      'miteru._activeList clean before test'
     )
 
     var expected = [
