@@ -980,6 +980,12 @@ test( 'check file activity flagging from glob', function ( t ) {
 
     var buffer = [ '' ]
 
+    t.deepEqual(
+      miteru.getWatched(),
+      [],
+      'miteru clean and ready for next test'
+    )
+
     t.ok(
       verifyFileCleaning(
         [
@@ -997,6 +1003,8 @@ test( 'check file activity flagging from glob', function ( t ) {
 
     _lastMaxActiveListLength = miteru._MAX_ACTIVE_LIST_LENGTH
     miteru._MAX_ACTIVE_LIST_LENGTH = 2
+
+    var _timeout
 
     var w = miteru.watch( 'test/tmp/**/*.*', function ( evt, filepath ) {
       switch ( evt ) {
@@ -1017,9 +1025,10 @@ test( 'check file activity flagging from glob', function ( t ) {
           buffer.push( evt + ': ' + filepath )
           break
       }
-    } )
 
-    setTimeout( finish, ACTION_INTERVAL )
+      clearTimeout( _timeout )
+      _timeout = setTimeout( finish, ACTION_INTERVAL )
+    } )
 
     function finish () {
       miteru._MAX_ACTIVE_LIST_LENGTH = _lastMaxActiveListLength
