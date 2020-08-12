@@ -65,6 +65,12 @@ DEBUG = {
   EVT: true
 }
 
+function debugLog ( type, msg ) {
+  if ( DEBUG[ type.toUpperCase() ] ) {
+    console.log( msg )
+  }
+}
+
 // set verbosity based on getEnv variable MITERU_LOGLEVEL
 switch ( ( process.env.MITERU_LOGLEVEL || '' ).toLowerCase() ) {
   case 'silent':
@@ -516,7 +522,7 @@ function watchFile ( watcher, file, initFlagged ) {
 
   if ( fw ) {
     // already watching
-    DEBUG.LOG && log( 'file already being globally watched' )
+    debugLog( 'log', 'file already being globally watched' )
   } else {
     // add new file watcher
     fw = createFileWatcher( filepath )
@@ -524,7 +530,7 @@ function watchFile ( watcher, file, initFlagged ) {
   }
 
   if ( watcher.files[ filepath ] === fw ) {
-    DEBUG.LOG && log( '(ignored) local watcher already watching that file' )
+    debugLog( 'log', '(ignored) local watcher already watching that file' )
     return
   }
 
@@ -555,7 +561,7 @@ function unwatchFile ( watcher, file ) {
 
   if ( !fw && !wfw ) {
     // already unwatched
-    DEBUG.LOG && log( '(ignored) file already unwatched' )
+    debugLog( 'log', '(ignored) file already unwatched' )
     return
   }
 
@@ -676,7 +682,7 @@ function pollFile ( fw ) {
   if ( fw.locked ) throw new Error( 'fw is locked' )
   fw.locked = true
 
-  getEnv( 'DEV' ) && console.log( ' == fs.stat:ing == ' )
+  debugLog( 'dev', ' == fs.stat:ing == ' )
 
   // var isEdgy = ( fw.mtime && ( Date.now() - stats.mtime ) < EDGE_CASE_INTERVAL )
   // TODO rethink fs.readFileSync situation
@@ -684,7 +690,7 @@ function pollFile ( fw ) {
 
   fs.stat( fw.filepath, function ( err, stats ) {
     if ( fw.closed ) {
-      DEBUG.LOG && log( 'fw has been closed' )
+      debugLog( 'log', 'fw has been closed' )
       return undefined
     }
 
@@ -694,7 +700,7 @@ function pollFile ( fw ) {
       // TODO -- this isn't a legit error probably
       // -> file was just removed from the watch list
       // during its polling
-      DEBUG.LOG && log( 'fw is empty during fs.stat' )
+      debugLog( 'log', 'fw is empty during fs.stat' )
       fw.close()
       return undefined
     }
@@ -718,7 +724,7 @@ function pollFile ( fw ) {
       switch ( err.code ) {
         case 'EPERM':
         case 'ENOENT':
-          DEBUG.ENOENT && log( ' === POLL ENOENT === ' )
+          debugLog( 'enoent', ' === POLL ENOENT === ' )
           handleFSStatError( fw )
           break
 
@@ -726,7 +732,7 @@ function pollFile ( fw ) {
       }
     } else { // no error
       if ( stats.size <= 0 && ( fw.size !== stats.size ) ) {
-        getEnv( 'DEV' ) && console.log( ' ============ size was falsy: ' + stats.size )
+        debugLog( 'dev', ' ============ size was falsy: ' + stats.size )
         if ( fw.attempts < MAX_ATTEMPTS * 2 ) {
           // handle as a potential ENOENT error, i.e., increment
           // error counter but this event alone cannot consider the file
@@ -740,11 +746,11 @@ function pollFile ( fw ) {
         } else {
           // if we've exceeded attempts then assume the file exists
           // and it's intentionally empty ( of size 0 )
-          getEnv( 'DEV' ) && console.log( ' consider file empty ' )
+          debugLog( 'dev', ' consider file empty ' )
         }
       }
 
-      getEnv( 'DEV' ) && console.log( ' == fs.stat OK == ' )
+      debugLog( 'dev', ' == fs.stat OK == ' )
 
       // debugging helpers
       var debug = fw._debug
@@ -773,7 +779,7 @@ function pollFile ( fw ) {
           } catch ( err ) {
             throw err
           }
-          DEBUG.DEV && console.log( 'written: ' + text )
+          debugLog( 'dev', 'written: ' + text )
         }
       }
 
@@ -831,7 +837,7 @@ function pollFile ( fw ) {
       var skipEdgeCase = ( stats.size >= EDGE_CASE_MAX_SIZE )
       var isEdgy = ( ( Date.now() - stats.mtime ) < EDGE_CASE_INTERVAL )
 
-      isEdgy && getEnv( 'DEV' ) && console.log( 'is edgy' )
+      isEdgy && debugLog( 'dev', 'is edgy' )
 
       var shouldCompareFileContents = (
         ALWAYS_COMPARE_FILECONTENT ||
@@ -851,11 +857,11 @@ function pollFile ( fw ) {
       )
 
       if ( shouldReadFileContents ) {
-        DEBUG.FILE && log( 'FILE WILL READ CONTENT   : ' + fw.filepath )
+        debugLog( 'file', 'FILE WILL READ CONTENT   : ' + fw.filepath )
       }
 
       if ( shouldCompareFileContents ) {
-        DEBUG.FILE && log( 'FILE WILL COMPARE CONTENT   : ' + fw.filepath )
+        debugLog( 'file', 'FILE WILL COMPARE CONTENT   : ' + fw.filepath )
       }
 
       var fileContent
@@ -874,7 +880,7 @@ function pollFile ( fw ) {
           // have been updated [#1]
           fileContent = fs.readFileSync( fw.filepath )
 
-          getEnv( 'DEV' ) && console.log( 'read file contents: ' + fileContent.toString( 'utf8' ) )
+          debugLog( 'dev', 'read file contents: ' + fileContent.toString( 'utf8' ) )
         } catch ( err ) {
           switch ( err.code ) {
             case 'EPERM':
@@ -917,37 +923,37 @@ function pollFile ( fw ) {
         // )
       )
 
-      getEnv( 'DEV' ) && console.log( ' == 1 == ' )
+      debugLog( 'dev', ' == 1 == ' )
 
       if ( fileContentHasChanged ) {
-        getEnv( 'DEV' ) && console.log( 'content was: ' + fw.fileContent.toString( 'utf8' ) )
-        getEnv( 'DEV' ) && console.log( 'content now: ' + fileContent.toString( 'utf8' ) )
+        debugLog( 'dev', 'content was: ' + fw.fileContent.toString( 'utf8' ) )
+        debugLog( 'dev', 'content now: ' + fileContent.toString( 'utf8' ) )
       }
 
-      getEnv( 'DEV' ) && console.log( ' == 2 == ' )
+      debugLog( 'dev', ' == 2 == ' )
 
       if ( sizeChanged ) {
-        getEnv( 'DEV' ) && console.log( 'size was: ' + fw.size )
-        getEnv( 'DEV' ) && console.log( 'size now: ' + stats.size )
+        debugLog( 'dev', 'size was: ' + fw.size )
+        debugLog( 'dev', 'size now: ' + stats.size )
       }
 
-      getEnv( 'DEV' ) && console.log( ' == 3 == ' )
+      debugLog( 'dev', ' == 3 == ' )
 
       if ( mtimeChanged ) {
-        getEnv( 'DEV' ) && console.log( 'mtime was: ' + fw.mtime )
-        getEnv( 'DEV' ) && console.log( 'mtime now: ' + stats.mtime )
+        debugLog( 'dev', 'mtime was: ' + fw.mtime )
+        debugLog( 'dev', 'mtime now: ' + stats.mtime )
       }
 
-      getEnv( 'DEV' ) && console.log( ' == 4 == ' )
+      debugLog( 'dev', ' == 4 == ' )
 
       // update fileContent if necessary
       if ( fileContent && ( !existedPreviously || fileContentHasChanged ) ) {
-        getEnv( 'DEV' ) && console.log( 'fileContent updated: ' + fileContent.toString( 'utf8' ) )
+        debugLog( 'dev', 'fileContent updated: ' + fileContent.toString( 'utf8' ) )
         // console.log( fileContent.toString( 'utf8' ) )
         setFileContent( fw, fileContent )
       }
 
-      getEnv( 'DEV' ) && console.log( ' == 5 == ' )
+      debugLog( 'dev', ' == 5 == ' )
 
       if ( fileContentHasChanged ) {
         // [#1]
@@ -965,21 +971,21 @@ function pollFile ( fw ) {
         // triggering a 'change' event
         var newMtime = Date.now()
         if ( stats.mtime < newMtime ) {
-          getEnv( 'DEV' ) && console.log( '  updated stats.mtime' )
+          debugLog( 'dev', '  updated stats.mtime' )
           stats.mtime = new Date( newMtime )
         }
 
         if ( stats.size !== fileContent.length ) {
-          getEnv( 'DEV' ) && console.log(
+          debugLog( 'dev', (
             '  updated stats.size -- was: $was, is: $is'
               .replace( '$was', stats.size )
               .replace( '$is', fileContent.length )
-          )
+          ) )
           stats.size = fileContent.length
         }
       }
 
-      getEnv( 'DEV' ) && console.log( ' == 6 == ' )
+      debugLog( 'dev', ' == 6 == ' )
 
       // update stats
       fw.type = type
@@ -994,33 +1000,33 @@ function pollFile ( fw ) {
 
       fw._stats = stats // remember stats object
 
-      getEnv( 'DEV' ) && console.log( ' == 7 == ' )
+      debugLog( 'dev', ' == 7 == ' )
 
       // change the polling interval dynamically
       // based on how often the file is changed
       updatePollingInterval( fw )
 
-      getEnv( 'DEV' ) && console.log( ' == 8 == ' )
+      debugLog( 'dev', ' == 8 == ' )
 
       // schedule next poll
       unlockFile( fw )
       schedulePoll( fw )
 
-      getEnv( 'DEV' ) && console.log( ' == 9 == ' )
+      debugLog( 'dev', ' == 9 == ' )
 
       // trigger events
       if ( existedPreviously ) {
-        getEnv( 'DEV' ) && console.log( ' == 10 == ' )
+        debugLog( 'dev', ' == 10 == ' )
 
         if ( sizeChanged || mtimeChanged || fileContentHasChanged ) {
-          DEBUG.EVT && log( 'change: ' + fw.filepath )
-          getEnv( 'DEV' ) && console.log(
+          debugLog( 'evt', 'change: ' + fw.filepath )
+          debugLog( 'dev', (
             'change evt -- sizeChanged $1, mtimeChanged $2, fileContentHasChanged $3: [$4]'
               .replace( '$1', sizeChanged )
               .replace( '$2', mtimeChanged )
               .replace( '$3', fileContentHasChanged )
               .replace( '$4', fw.filepath )
-          )
+          ) )
 
           loadEvent( fw, 'change' )
         } else {
@@ -1034,35 +1040,35 @@ function pollFile ( fw ) {
           }
         }
 
-        getEnv( 'DEV' ) && console.log( ' == 11 == ' )
+        debugLog( 'dev', ' == 11 == ' )
       } else {
-        getEnv( 'DEV' ) && console.log( ' == 12 == ' )
+        debugLog( 'dev', ' == 12 == ' )
 
         if ( fw.initFlagged === true ) {
           fw.initFlagged = false
-          DEBUG.EVT && log( 'init: ' + fw.filepath )
-          getEnv( 'DEV' ) && console.log(
+          debugLog( 'evt', 'init: ' + fw.filepath )
+          debugLog( 'dev', (
             'init evt -- sizeChanged $1, mtimeChanged $2, fileContentHasChanged $3: [$4]'
               .replace( '$1', sizeChanged )
               .replace( '$2', mtimeChanged )
               .replace( '$3', fileContentHasChanged )
               .replace( '$4', fw.filepath )
-          )
+          ) )
           loadEvent( fw, 'init' )
           dispatchPendingEvent( fw ) // init is safe to fire straight away
         } else {
-          DEBUG.EVT && log( 'add: ' + fw.filepath )
-          getEnv( 'DEV' ) && console.log(
+          debugLog( 'evt', 'add: ' + fw.filepath )
+          debugLog( 'dev', (
             'add evt -- sizeChanged $1, mtimeChanged $2, fileContentHasChanged $3: [$4]'
               .replace( '$1', sizeChanged )
               .replace( '$2', mtimeChanged )
               .replace( '$3', fileContentHasChanged )
               .replace( '$4', fw.filepath )
-          )
+          ) )
           loadEvent( fw, 'add' )
         }
 
-        getEnv( 'DEV' ) && console.log( ' == 13 == ' )
+        debugLog( 'dev', ' == 13 == ' )
       }
     }
   } )
@@ -1104,10 +1110,10 @@ function handleFSStatError ( fw ) {
 
       // TODO trigger 'unlink' event
       DEBUG.EVT && log( 'unlink: ' + fw.filepath )
-      getEnv( 'DEV' ) && console.log(
+      debugLog( 'dev', (
         'unlink evt -- [$4]'
           .replace( '$4', fw.filepath )
-      )
+      ) )
       loadEvent( fw, 'unlink' )
 
       // schedule next poll
@@ -1183,14 +1189,12 @@ function loadEvent ( fw, evt ) {
     return undefined
   }
 
-  if ( getEnv( 'DEV' ) ) {
-    if ( fw._eventReadyToFire ) {
-      console.log(
-        'unfired triggered overriden with new [$1] -> [$2]'
-          .replace( '$1', fw._eventReadyToFire )
-          .replace( '$2', evt )
-      )
-    }
+  if ( fw._eventReadyToFire ) {
+    debugLog( 'dev', (
+      'unfired triggered overriden with new [$1] -> [$2]'
+        .replace( '$1', fw._eventReadyToFire )
+        .replace( '$2', evt )
+    ) )
   }
 
   fw._eventReadyToFire = evt
