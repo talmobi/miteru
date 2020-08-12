@@ -130,10 +130,6 @@ function getEnv ( key ) {
   }
 }
 
-function log ( msg ) {
-  console.log( msg )
-}
-
 var _running = true
 
 // list of all files being watched ( and continuously polled )
