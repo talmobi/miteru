@@ -1875,7 +1875,10 @@ test( 'test polling interval changes based on mtime (temperatures)', function ( 
       buffer.push( interval )
       buffer.push( temperature )
 
-      setTimeout( next, 1000 )
+      setTimeout(
+        next,
+        TEMPERATURE[ temperature.toUpperCase() ] && TEMPERATURE[ temperature.toUpperCase() ].INTERVAL
+        )
     } )
 
     var actions = [
