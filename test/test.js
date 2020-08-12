@@ -1772,7 +1772,7 @@ test( 'test polling interval changes based on mtime (temperatures)', function ( 
     )
 
     fs.writeFileSync( filepath, 'module.exports = "abra"' )
-    fs.utimesSync( filepath, Date.now(), 1 )
+    fs.utimesSync( filepath, Date.now() / 1000, 1 )
 
     // don't add any files to active list that gets faster poll intervals
     miteru._MAX_ACTIVE_LIST_LENGTH = 0
@@ -1813,22 +1813,22 @@ test( 'test polling interval changes based on mtime (temperatures)', function ( 
       function ( next ) {
         var time = Date.now() - TEMPERATURE.COLD.AGE
         var unixTime = time / 1000
-        fs.utimesSync( filepath, Date.now(), unixTime + 5 )
+        fs.utimesSync( filepath, Date.now() / 1000, unixTime + 5 )
       },
       function ( next ) {
         var time = Date.now() - TEMPERATURE.WARM.AGE
         var unixTime = time / 1000
-        fs.utimesSync( filepath, Date.now(), unixTime + 5 )
+        fs.utimesSync( filepath, Date.now() / 1000, unixTime + 5 )
       },
       function ( next ) {
         var time = Date.now() - TEMPERATURE.SEMI_HOT.AGE
         var unixTime = time / 1000
-        fs.utimesSync( filepath, Date.now(), unixTime + 5 )
+        fs.utimesSync( filepath, Date.now() / 1000, unixTime + 5 )
       },
       function ( next ) {
         var time = Date.now() - TEMPERATURE.HOT.AGE
         var unixTime = time / 1000
-        fs.utimesSync( filepath, Date.now(), unixTime + 5 )
+        fs.utimesSync( filepath, Date.now() / 1000, unixTime + 5 )
       }
     ]
 
