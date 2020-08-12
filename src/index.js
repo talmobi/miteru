@@ -1205,7 +1205,7 @@ function setFileContent ( fw, content ) {
 //   fw.mtime = stats.mtime
 // }
 
-// keep track of the top (atm 10) actively changing files
+// keep track of the top ( _MAX_ACTIVE_LIST_LENGTH ) actively changing files
 // by setting their active flag thus prioritizing their polling
 function promote ( fw ) {
   if ( fw.active ) return
