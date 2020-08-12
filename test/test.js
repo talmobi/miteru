@@ -235,7 +235,7 @@ test( 'watch a single file', function ( t ) {
   } )
 } )
 
-test.only( 'watch a single file using .on apis', function ( t ) {
+test( 'watch a single file using .on apis', function ( t ) {
   t.timeoutAfter( 7500 )
 
   prepareTestFiles( function () {
