@@ -518,7 +518,7 @@ function watchFile ( watcher, file, initFlagged ) {
   // does)
   fw.exists = false
 
-  promote( fw )
+  fw._promoteOnNextStat = true
 }
 
 function unwatchFile ( watcher, file ) {
@@ -960,6 +960,11 @@ function pollFile ( fw ) {
       fw.exists = true
       fw.size = stats.size
       fw.mtime = stats.mtime
+
+      if ( fw._promoteOnNextStat ) {
+        fw._promoteOnNextStat = false
+        promote( fw )
+      }
 
       fw._stats = stats // remember stats object
 
