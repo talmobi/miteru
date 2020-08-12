@@ -1338,11 +1338,20 @@ test( 'miteru.reset()', function ( t ) {
     t.equal( miteru._MAX_ACTIVE_LIST_LENGTH, 6, 'miteru _MAX_ACTIVE_LIST_LENGTH OK' )
     t.equal( miteru._CPU_SMOOTHING_DELAY, 3000, 'miteru _CPU_SMOOTHING_DELAY OK' )
 
+    t.equal( miteru._NOEXISTS_SLEEP_DELAY, 1000 * 15, 'miteru _NOEXISTS_SLEEP_DELAY OK' )
+    t.equal( miteru._NOEXIST_INTERVAL, 400, 'miteru _NOEXIST_INTERVAL OK' )
+
     miteru._MAX_ACTIVE_LIST_LENGTH = 300
     miteru._CPU_SMOOTHING_DELAY = 5000 // milliseconds
 
+    miteru._NOEXISTS_SLEEP_DELAY = 1000
+    miteru._NOEXIST_INTERVAL = 600 // milliseconds
+
     t.equal( miteru._MAX_ACTIVE_LIST_LENGTH, 300, 'miteru _MAX_ACTIVE_LIST_LENGTH OK' )
     t.equal( miteru._CPU_SMOOTHING_DELAY, 5000, 'miteru _CPU_SMOOTHING_DELAY OK' )
+
+    t.equal( miteru._NOEXISTS_SLEEP_DELAY, 1000, 'miteru _NOEXISTS_SLEEP_DELAY OK' )
+    t.equal( miteru._NOEXIST_INTERVAL, 600, 'miteru _NOEXIST_INTERVAL OK' )
 
     var expected = [
       '',
@@ -1419,6 +1428,9 @@ test( 'miteru.reset()', function ( t ) {
 
       t.equal( miteru._MAX_ACTIVE_LIST_LENGTH, 6, 'miteru _MAX_ACTIVE_LIST_LENGTH OK' )
       t.equal( miteru._CPU_SMOOTHING_DELAY, 3000, 'miteru _CPU_SMOOTHING_DELAY OK' )
+
+      t.equal( miteru._NOEXISTS_SLEEP_DELAY, 1000 * 15, 'miteru _NOEXISTS_SLEEP_DELAY OK' )
+      t.equal( miteru._NOEXIST_INTERVAL, 400, 'miteru _NOEXIST_INTERVAL OK' )
 
       setTimeout( function () {
         t.end()
