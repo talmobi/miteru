@@ -1802,14 +1802,18 @@ test( 'test polling interval changes based on mtime (temperatures)', function ( 
         AGE: ( 1000 * 60 * 60 * 24 ), // 24 hours
         INTERVAL: 333
       },
-      COLDEST_INTERVAL: 625,
-      DORMANT_INTERVAL: 200
+      COLDEST: {
+        INTERVAL: 625
+      },
+      DORMANT: {
+        INTERVAL: 200
+      }
     }
 
     var expected = [
       '',
       'init',
-      TEMPERATURE.COLDEST_INTERVAL,
+      TEMPERATURE.COLDEST.INTERVAL,
       'coldest',
       'change',
       TEMPERATURE.COLD.INTERVAL,

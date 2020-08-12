@@ -47,8 +47,12 @@ var TEMPERATURE = {
     AGE: ( 1000 * 60 * 60 * 24 ), // 24 hours
     INTERVAL: 333
   },
-  COLDEST_INTERVAL: 625,
-  DORMANT_INTERVAL: 200
+  COLDEST: {
+    INTERVAL: 625
+  },
+  DORMANT: {
+    INTERVAL: 200
+  }
 }
 
 var DEBUG = {
@@ -1262,10 +1266,10 @@ function updatePollingInterval ( fw ) {
         fw.pollInterval = TEMPERATURE.COLD.INTERVAL
       }
     } else {
-      if ( fw.pollInterval !== TEMPERATURE.COLDEST_INTERVAL ) {
+      if ( fw.pollInterval !== TEMPERATURE.COLDEST.INTERVAL ) {
         DEBUG.TEMPERATURE && log( 'COLDEST file: ' + filepath )
         fw.temperature = 'coldest'
-        fw.pollInterval = TEMPERATURE.COLDEST_INTERVAL
+        fw.pollInterval = TEMPERATURE.COLDEST.INTERVAL
       }
     }
   }
@@ -1275,8 +1279,8 @@ function updatePollingInterval ( fw ) {
   // from being considered as HOT FILES, i.e., files that are
   // actively being modified
   if ( !fw._awake && !fw.active ) {
-    if ( fw.pollInterval < TEMPERATURE.DORMANT_INTERVAL ) {
-      fw.pollInterval = TEMPERATURE.DORMANT_INTERVAL
+    if ( fw.pollInterval < TEMPERATURE.DORMANT.INTERVAL ) {
+      fw.pollInterval = TEMPERATURE.DORMANT.INTERVAL
       fw.temperature = 'dormant'
     }
   }
