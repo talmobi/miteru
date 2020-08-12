@@ -235,6 +235,183 @@ test( 'watch a single file', function ( t ) {
   } )
 } )
 
+test.only( 'watch a single file using .on apis', function ( t ) {
+  t.timeoutAfter( 7500 )
+
+  prepareTestFiles( function () {
+    var filepath = path.join( __dirname, 'tmp', 'main.js' )
+
+    var expected = [
+      '',
+      'init: abra',
+      'init2: abra',
+
+      'change: 88',
+      'change2: 88',
+
+      'unlink: ' + filepath,
+      'unlink2: ' + filepath,
+
+      'add: 11',
+      'add2: 11',
+
+      'change: kadabra',
+      'change2: kadabra',
+
+      'change: allakhazam'
+    ]
+
+    var buffer = [ '' ]
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    fs.writeFileSync( filepath, 'module.exports = "abra"' )
+
+    var w = miteru.watch( filepath )
+    var w2 = miteru.watch( filepath )
+
+    w.on( 'init', function ( filepath ) {
+      buffer.push( 'init: ' + run( filepath ) )
+      next()
+    } )
+    w2.on( 'init', function ( filepath ) {
+      buffer.push( 'init2: ' + run( filepath ) )
+    } )
+
+    w.on( 'add', function ( filepath ) {
+      buffer.push( 'add: ' + run( filepath ) )
+      next()
+    } )
+    w2.on( 'add', function ( filepath ) {
+      buffer.push( 'add2: ' + run( filepath ) )
+    } )
+
+    w.on( 'unlink', function ( filepath ) {
+      try {
+        fs.readFileSync( filepath )
+        t.fail( 'unlink event FAILURE (File still exists)' )
+      } catch ( err ) {
+        t.equal( err.code, 'ENOENT', 'unlink event OK (ENOENT)' )
+        buffer.push( 'unlink: ' + filepath )
+      }
+
+      setTimeout( next, ACTION_INTERVAL * 2 )
+    } )
+    w2.on( 'unlink', function ( filepath ) {
+      try {
+        fs.readFileSync( filepath )
+        t.fail( 'unlink event FAILURE (File still exists)' )
+      } catch ( err ) {
+        t.equal( err.code, 'ENOENT', 'unlink event OK (ENOENT)' )
+        buffer.push( 'unlink2: ' + filepath )
+      }
+    } )
+
+    w.on( 'change', function ( filepath ) {
+      buffer.push( 'change: ' + run( filepath ) )
+      next()
+    } )
+    var off2Change = w2.on( 'change', function ( filepath ) {
+      buffer.push( 'change2: ' + run( filepath ) )
+    } )
+
+    var actions = [
+      function ( errorCallback ) {
+        fs.writeFile( filepath, 'module.exports = 88', errorCallback )
+      },
+      function ( errorCallback ) {
+        rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
+          if ( err ) throw err
+        } )
+      },
+      function ( errorCallback ) {
+        fs.writeFile( filepath, 'module.exports = 11', errorCallback )
+      },
+      function ( errorCallback ) {
+        fs.writeFile( filepath, 'module.exports = "kadabra"', errorCallback )
+      },
+      function ( errorCallback ) {
+        // use returned off function, w2 change listener should not receive this next change
+        off2Change()
+
+        fs.writeFile( filepath, 'module.exports = "allakhazam"', errorCallback )
+      }
+    ]
+
+    function next () {
+      var a = actions.shift()
+      if ( a ) {
+        setTimeout( function () {
+          a( function ( err ) {
+            if ( err ) throw err
+          } )
+        }, ACTION_INTERVAL )
+      } else {
+        setTimeout( finish, ACTION_INTERVAL )
+      }
+    }
+
+    function finish () {
+      t.deepEqual(
+        buffer,
+        expected,
+        'expected output OK'
+      )
+
+      t.deepEqual(
+        w.getWatched(),
+        [ filepath ],
+        'expected files (1) still being watched'
+      )
+      t.deepEqual(
+        w2.getWatched(),
+        [ filepath ],
+        'expected files (1) still being watched'
+      )
+
+      w.unwatch( filepath )
+
+      t.deepEqual(
+        w.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+      t.deepEqual(
+        w2.getWatched(),
+        [ filepath ],
+        'expected files (1) still being watched'
+      )
+
+      w.close()
+
+      t.deepEqual(
+        miteru.getWatched(),
+        [ filepath ],
+        'expected files (1) still being watched'
+      )
+
+      w2.close()
+
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  } )
+} )
+
 test( 'watch a single file (without initial file list)', function ( t ) {
   t.timeoutAfter( 7500 )
 
