@@ -981,7 +981,7 @@ function pollFile ( fw ) {
       fw.size = stats.size
       fw.mtime = stats.mtime
 
-      if ( fw._promoteOnNextStat ) {
+      if ( fw._promoteOnNextStat && fw.mtime ) {
         fw._promoteOnNextStat = false
         promote( fw )
       }
