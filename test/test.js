@@ -258,6 +258,9 @@ test( 'cover MITERU_STATS MITERU_PROMOTION_LIST', function ( t ) {
     process.env[ 'MITERU_STATS' ] = true
     process.env[ 'MITERU_PROMOTION_LIST' ] = true
 
+    t.equal( miteru._stat.report, false, 'miteru stats report off OK' )
+    miteru._stats.report = true
+
     var buffer = [ '' ]
 
     t.ok(
