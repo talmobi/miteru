@@ -1739,7 +1739,6 @@ test( 'loadEvent abortion', function ( t ) {
         t.end()
       }, 100 )
     }
-
   } )
 } )
 
