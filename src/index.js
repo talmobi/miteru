@@ -203,6 +203,8 @@ api.reset = function reset () {
 
   api._MAX_ACTIVE_LIST_LENGTH = 6
   api._CPU_SMOOTHING_DELAY = 3000 // milliseconds
+
+  delete api._disableCpuSmoothing
 }
 
 var _watcherIds = 1
