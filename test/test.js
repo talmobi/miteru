@@ -1307,7 +1307,7 @@ test( 'check file activity flagging', function ( t ) {
       filepath4 + ':' + 'false'
     ]
 
-    var expectedBuf = [
+    var expectedEvts = [
       '',
 
       'init',
@@ -1327,7 +1327,7 @@ test( 'check file activity flagging', function ( t ) {
     ]
 
     var buffer = [ '' ]
-    var buf = [ '' ]
+    var evts = [ '' ]
 
     t.ok(
       verifyFileCleaning(
@@ -1354,8 +1354,8 @@ test( 'check file activity flagging', function ( t ) {
     var w = miteru.watch( filepath1, function ( evt, filepath ) {
       // do nothing
       console.log( evt + ':' + filepath )
-      buf.push( evt )
-      buf.push( filepath )
+      evts.push( evt )
+      evts.push( filepath )
 
       if ( evt === 'change' || evt === 'add' ) {
         setTimeout( next, 1000 )
@@ -1422,8 +1422,8 @@ test( 'check file activity flagging', function ( t ) {
       )
 
       t.deepEqual(
-        buf,
-        expectedBuf,
+        evts.sort(),
+        expectedEvts.sort(),
         'expected events OK'
       )
 
