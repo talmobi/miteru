@@ -1104,6 +1104,12 @@ test( 'check file activity flagging', function ( t ) {
 
     var timestamp = Date.now()
 
+    t.deepEqual(
+      miteru.getWatched(),
+      [],
+      'miteru clean and ready for next test'
+    )
+
     var expected = [
       '',
 
