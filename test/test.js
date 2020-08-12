@@ -1590,7 +1590,7 @@ test( 'check file activity flagging from glob', function ( t ) {
     fs.writeFileSync( filepath2, 'foo' )
 
     // make sure filepath1 is always oldest in the activity list
-    fs.utimesSync( filepath, Date.now() / 1000, ( Date.now() / 1000 ) - 1 )
+    fs.utimesSync( filepath1, Date.now() / 1000, ( Date.now() / 1000 ) - 1 )
 
     _lastMaxActiveListLength = miteru._MAX_ACTIVE_LIST_LENGTH
     miteru._MAX_ACTIVE_LIST_LENGTH = 2
