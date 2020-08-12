@@ -22,7 +22,7 @@
     "test:source": "TEST_SOURCE=true node test/test.js",
     "test:only": "DEV=1 node test/test.js",
     "test": "npm run lint && npm run build && npm run pass && node test/test.js | faucet",
-    "coverage": "nyc npm test"
+    "coverage": "TEST_SOURCE=true nyc npm test"
   },
   "keywords": [
     "miteru",
