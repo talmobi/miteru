@@ -534,6 +534,7 @@ function watchFile ( watcher, file, initFlagged ) {
 
   // initFlagged indicates that this file was added to the watch list
   // during the same tick (nodejs process tick)
+  // TODO handle initFlagged separately for each local watcher?
   if ( initFlagged === true ) {
     fw.initFlagged = true
   }
