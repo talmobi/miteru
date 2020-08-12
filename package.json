@@ -23,6 +23,7 @@
     "test:only": "DEV=1 node test/test.js",
     "test": "npm run lint && npm run build && npm run pass && node test/test.js | faucet",
     "report": "nyc report",
+    "serve:report": "http-server coverage/lcov-report/",
     "coverage": "TEST_SOURCE=true nyc --reporter=lcov --reporter=text-summary npm test && npm run report"
   },
   "keywords": [
