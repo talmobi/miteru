@@ -1109,7 +1109,7 @@ function handleFSStatError ( fw ) {
       }
 
       // TODO trigger 'unlink' event
-      DEBUG.EVT && log( 'unlink: ' + fw.filepath )
+      debugLog( 'evt', 'unlink: ' + fw.filepath )
       debugLog( 'dev', (
         'unlink evt -- [$4]'
           .replace( '$4', fw.filepath )
