@@ -179,7 +179,7 @@ api._getFileWatcher = function _getFileWatcher ( file ) {
 api._activeList = _activeList
 
 api.getStats = function getStats () {
-  var s = Object.assign( {}, _stats )
+  var s = Object.assign( {}, api._stats )
   delete s.report
   return s
 }
@@ -205,11 +205,9 @@ api.reset = function reset () {
     pollCounter: 0,
     maxPollTime: 0,
     minPollTime: 999999,
+    // extra polling time based on number of files watched
+    extraTime: 100
   }
-
-  // extra polling time based on number of files watched
-  extraTime: 100
-}
 
   delete api._disableCpuSmoothing
 }
@@ -470,6 +468,7 @@ function statsFunction () {
       if ( delta >= 1000 ) {
         statsFunction.time = now
 
+        var _stats = api._stats
         _stats.cpus.push( usage() )
         while ( _stats.cpus.length > 3 ) _stats.cpus.shift()
 
@@ -709,6 +708,7 @@ function pollFile ( fw ) {
     if ( fw._lastPollTime ) {
       var delta = ( now - fw._lastPollTime )
 
+      var _stats = api._stats
       var _wstats = _stats
       _wstats.pollCounter++
 
@@ -1309,6 +1309,7 @@ function updatePollingInterval ( fw ) {
   }
 
   if ( !api._disableCpuSmoothing && ( ( Date.now() - START_TIME ) > api._CPU_SMOOTHING_DELAY ) ) {
+    var _stats = api._stats
     var stats = _stats
 
     if ( stats.cpu ) {
