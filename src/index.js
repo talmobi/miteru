@@ -758,11 +758,7 @@ function pollFile ( fw ) {
           debug.removeAfterFSStat = false
           // related test:
           // 'watch a new file after init removed between FSStat:ing'
-          try {
-            fs.unlinkSync( fw.filepath )
-          } catch ( err ) {
-            throw err
-          }
+          fs.unlinkSync( fw.filepath )
         }
 
         if ( debug.changeContentAfterFSStat ) {
@@ -770,14 +766,10 @@ function pollFile ( fw ) {
           // related test:
           // 'watch a single file -- file content appended between FSStat:ing'
 
-          try {
-            var text = fs.readFileSync( fw.filepath ).toString( 'utf8' )
-            // console.log( 'text was: ' + text )
-            text += ' + "-FSStatDebug"'
-            fs.writeFileSync( fw.filepath, text )
-          } catch ( err ) {
-            throw err
-          }
+          var text = fs.readFileSync( fw.filepath ).toString( 'utf8' )
+          // console.log( 'text was: ' + text )
+          text += ' + "-FSStatDebug"'
+          fs.writeFileSync( fw.filepath, text )
           debugLog( 'dev', 'written: ' + text )
         }
       }
