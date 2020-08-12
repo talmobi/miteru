@@ -180,10 +180,24 @@ api._getFileWatcher = function _getFileWatcher ( file ) {
   return _fileWatchers[ filepath ]
 }
 
+api._activeList = _activeList
+
 api.getStats = function getStats () {
   var s = Object.assign( {}, _stats )
   delete s.report
   return s
+}
+
+api.reset = function reset () {
+  Object.keys( _fileWatchers ).forEach( function ( key ) {
+    var fw = _fileWatchers[ key ]
+    fw && fw.close()
+    delete _fileWatchers[ key ]
+  } )
+  _activeList.length = 0
+
+  api._MAX_ACTIVE_LIST_LENGTH = 6
+  api._CPU_SMOOTHING_DELAY = 3000 // milliseconds
 }
 
 var _watcherIds = 1
