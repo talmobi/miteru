@@ -1184,12 +1184,14 @@ test( 'check file activity flagging', function ( t ) {
       buf.push( evt )
       buf.push( filepath )
 
-      if ( evt === 'change' || evt === 'add' ) next()
+      if ( evt === 'change' || evt === 'add' ) {
+        setTimeout( next, 1000 )
+      }
     } )
 
-    setTimeout( next, ACTION_INTERVAL )
-
     w.add( filepath4 ) // will be pushed off from the active list for coverage
+
+    setTimeout( next, ACTION_INTERVAL )
 
     var actions = [
       function ( next ) {
