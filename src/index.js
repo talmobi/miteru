@@ -516,7 +516,7 @@ function watchFile ( watcher, file, initFlagged ) {
 
   if ( fw ) {
     // already watching
-    DEBUG.LOG && log( '(ignored) file already being watched' )
+    DEBUG.LOG && log( 'file already being globally watched' )
   } else {
     // add new file watcher
     fw = createFileWatcher( filepath )
