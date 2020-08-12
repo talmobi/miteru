@@ -308,8 +308,12 @@ test( 'cover MITERU_STATS MITERU_PROMOTION_LIST', function ( t ) {
       next()
     } )
 
+
+    var startTime
+
     var actions = [
       function ( next ) {
+        startTime = Date.now()
         fs.writeFile( filepath, 'module.exports = 88', next )
       },
       function ( next ) {
@@ -324,7 +328,10 @@ test( 'cover MITERU_STATS MITERU_PROMOTION_LIST', function ( t ) {
         fs.writeFile( filepath, 'module.exports = "kadabra"', next )
       },
       function ( next ) {
-        fs.writeFile( filepath, 'module.exports = "allakhazam"', next )
+        var delta = Date.now() - startTime
+        setTimeout( function () {
+          fs.writeFile( filepath, 'module.exports = "allakhazam"', next )
+        }, 1000 - delta ) // wait at least full second for a stats tick to complete
         // console.log( 'written allakhazam' )
       }
     ]
