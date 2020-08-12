@@ -1175,6 +1175,111 @@ test( 'watch a new file after init', function ( t ) {
   } )
 } )
 
+test( 'miteru.reset()', function ( t ) {
+  t.timeoutAfter( 3000 )
+
+  prepareTestFiles( function () {
+    var filepath1 = path.join( __dirname, 'tmp', 'foo.js' )
+    var filepath2 = path.join( __dirname, 'tmp', 'bar.js' )
+    var filepath3 = path.join( __dirname, 'tmp', 'zoo.txt' )
+
+    var timestamp = Date.now()
+
+    t.equal( miteru.getWatched().length, 0, 'miteru watched is 0 OK' )
+    t.equal( miteru._activeList.length, 0, 'miteru actvie list 0 OK' )
+
+    t.equal( miteru._MAX_ACTIVE_LIST_LENGTH, 6, 'miteru _MAX_ACTIVE_LIST_LENGTH OK' )
+    t.equal( miteru._CPU_SMOOTHING_DELAY, 3000, 'miteru _CPU_SMOOTHING_DELAY OK' )
+
+    miteru._MAX_ACTIVE_LIST_LENGTH = 300
+    miteru._CPU_SMOOTHING_DELAY = 5000 // milliseconds
+
+    t.equal( miteru._MAX_ACTIVE_LIST_LENGTH, 300, 'miteru _MAX_ACTIVE_LIST_LENGTH OK' )
+    t.equal( miteru._CPU_SMOOTHING_DELAY, 5000, 'miteru _CPU_SMOOTHING_DELAY OK' )
+
+    var expected = [
+      '',
+      'init: ' + filepath1,
+      'init: ' + filepath2
+    ]
+
+    var buffer = [ '' ]
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath1,
+          filepath2,
+          filepath3
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    fs.writeFileSync( filepath1, 'foo' )
+    fs.writeFileSync( filepath2, 'foo' )
+    fs.writeFileSync( filepath3, 'foo' )
+
+    var w = miteru.watch( 'test/tmp/**/*.js', function ( evt, filepath ) {
+      switch ( evt ) {
+        case 'init':
+          buffer.push( 'init: ' + filepath )
+          break
+
+        case 'add':
+          buffer.push( 'add: ' + filepath )
+          break
+
+        case 'change':
+          buffer.push( 'change: ' + filepath )
+          break
+
+        default:
+          t.fail( 'unrecognized watch evt: [ ' + evt + ' ]' )
+          buffer.push( evt + ': ' + filepath )
+          break
+      }
+    } )
+
+    setTimeout( finish, ACTION_INTERVAL )
+
+    function finish () {
+      t.deepEqual(
+        buffer.sort(),
+        expected.sort(),
+        'expected output OK'
+      )
+
+      t.deepEqual(
+        w.getWatched(),
+        [
+          filepath1,
+          filepath2
+        ].sort(),
+        'expected files (2) still being watched'
+      )
+
+      miteru.reset()
+
+      t.deepEqual(
+        w.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
+      t.equal( miteru.getWatched().length, 0, 'miteru watched is 0 OK' )
+      t.equal( miteru._activeList.length, 0, 'miteru actvie list 0 OK' )
+
+      t.equal( miteru._MAX_ACTIVE_LIST_LENGTH, 6, 'miteru _MAX_ACTIVE_LIST_LENGTH OK' )
+      t.equal( miteru._CPU_SMOOTHING_DELAY, 3000, 'miteru _CPU_SMOOTHING_DELAY OK' )
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  } )
+} )
+
 test( 'watch a glob of files', function ( t ) {
   t.timeoutAfter( 3000 )
 
