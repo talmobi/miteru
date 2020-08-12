@@ -59,6 +59,11 @@ function prepareTestFiles ( next ) {
           if ( dirs.length !== 1 ) throw new Error( 'test directory not clean' )
           if ( dirs[ 0 ] !== 'test/tmp' ) throw new Error( 'test tmp directory not found' )
 
+          miteru.reset()
+
+          if ( miteru.getWatched().length !== 0 ) throw new Error( 'miteru not watch list not clean' )
+          if ( miteru._activeList.length !== 0 ) throw new Error( 'miteru not active list not clean' )
+
           setTimeout( function () {
             next()
           }, 150 )
