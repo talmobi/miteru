@@ -16,6 +16,8 @@ if ( process.env.TEST_SOURCE ) {
   miteru = require( '../src/index.js' )
 }
 
+var glob = require( 'redstar' )
+
 var test = require( 'tape' )
 
 var ACTION_INTERVAL = 300
@@ -44,13 +46,23 @@ function run ( filepath ) {
 
 function prepareTestFiles ( next ) {
   setTimeout( function () {
-    rimraf( 'test/tmp', function () {
-      mkdirp( 'test/tmp', function ( err ) {
+    var dirpath = path.join( __dirname, 'tmp' ) // ./test/tmp
+
+    rimraf( dirpath, function () {
+      mkdirp( dirpath, function ( err ) {
         if ( err ) throw err
 
-        setTimeout( function () {
-          next()
-        }, 150 )
+        glob( '**/test/tmp/**' , function ( err, files, dirs ) {
+          if ( err ) throw err
+
+          if ( files.length > 0 ) throw new Error( 'test files not clean' )
+          if ( dirs.length !== 1 ) throw new Error( 'test directory not clean' )
+          if ( dirs[ 0 ] !== 'test/tmp' ) throw new Error( 'test tmp directory not found' )
+
+          setTimeout( function () {
+            next()
+          }, 150 )
+        } )
       } )
     } )
   }, 150 )
