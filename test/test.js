@@ -2482,6 +2482,7 @@ test( 'attempt watch a directory and fail on error', function ( t ) {
     var expected = [
       ''
       , 'error'
+      , 'onError'
     ]
 
     var buffer = [ '' ]
@@ -2500,6 +2501,10 @@ test( 'attempt watch a directory and fail on error', function ( t ) {
 
       // console.log( 'evt: ' + evt )
       next()
+    } )
+
+    w.on( 'error', function ( filepath ) {
+      buffer.push( 'onError'  )
     } )
 
     var actions = []
