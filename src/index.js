@@ -670,6 +670,7 @@ function schedulePoll ( fw, forcedInterval ) {
   clearTimeout( fw.timeout )
   fw.timeout = setTimeout( function () {
     fw.timeout = undefined
+    fw._lastPollInterval = interval
     pollFile( fw )
   }, interval )
 }
