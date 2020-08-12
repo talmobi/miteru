@@ -1203,8 +1203,8 @@ function promote ( fw ) {
     // only need to compare with the last item because it's
     // pre-sorted
     var lastItem = list[ list.length - 1 ]
-
-    if ( lastItem && fw.mtime > lastItem.mtime ) {
+    var isMoreRecentlyModified = lastItem && ( fw.mtime > lastItem.mtime )
+    if ( !lastItem || isMoreRecentlyModified ) {
       fw.active = true
       list.push( fw )
       shouldSort = true
