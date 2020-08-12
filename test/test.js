@@ -215,13 +215,13 @@ test( 'watch a single file', function ( t ) {
         'expected files (0) still being watched'
       )
 
+      w.close()
+
       t.deepEqual(
         miteru.getWatched(),
         [],
         'expected files (0) still being watched'
       )
-
-      w.close()
 
       setTimeout( function () {
         t.end()
@@ -348,6 +348,12 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
       )
 
       w.close()
+
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
 
       setTimeout( function () {
         t.end()
@@ -682,6 +688,12 @@ test( 'watch a non-existing file', function ( t ) {
 
       w.close()
 
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
       setTimeout( function () {
         t.end()
       }, 100 )
@@ -833,6 +845,12 @@ test( 'watch a new file after init', function ( t ) {
 
       w.close()
 
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
       setTimeout( function () {
         t.end()
       }, 100 )
@@ -929,6 +947,12 @@ test( 'watch a glob of files', function ( t ) {
       )
 
       w.close()
+
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
 
       setTimeout( function () {
         t.end()
@@ -1046,6 +1070,12 @@ test( 'check file activity flagging from glob', function ( t ) {
       )
 
       w.close()
+
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
 
       setTimeout( function () {
         t.end()
@@ -1239,6 +1269,12 @@ test.only( 'check file activity flagging', function ( t ) {
       )
 
       w.close()
+
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
 
       setTimeout( function () {
         t.end()
@@ -1484,6 +1520,12 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
 
       w.close()
 
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
       setTimeout( function () {
         t.end()
       }, 100 )
@@ -1636,6 +1678,12 @@ test( 'loadEvent abortion', function ( t ) {
       )
 
       w.close()
+
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
 
       setTimeout( function () {
         t.end()
@@ -1868,13 +1916,13 @@ test( 'test polling interval changes based on mtime (temperatures)', function ( 
         'expected files (0) still being watched'
       )
 
+      w.close()
+
       t.deepEqual(
         miteru.getWatched(),
         [],
         'expected files (0) still being watched'
       )
-
-      w.close()
 
       setTimeout( function () {
         t.end()
