@@ -156,12 +156,6 @@ process.on( 'exit', function () {
 
 var api = module.exports = {}
 
-api._MAX_ACTIVE_LIST_LENGTH = 6
-api._CPU_SMOOTHING_DELAY = 3000 // milliseconds
-
-api._NOEXISTS_SLEEP_DELAY = ( 1000 * 15 )
-api._NOEXIST_INTERVAL = 400 // special polling interval for files that do not exist
-
 api.getWatched = function getWatched () {
   // TODO caching? premature optimization?
   // JavaScript doesn't guarantee ordering here so we sort
@@ -204,22 +198,25 @@ api.reset = function reset () {
   api._MAX_ACTIVE_LIST_LENGTH = 6
   api._CPU_SMOOTHING_DELAY = 3000 // milliseconds
 
-  delete api._disableCpuSmoothing
-}
-
-var _watcherIds = 1
-
-var _stats = {
-  report: getEnv( 'MITERU_STATS' ),
-  cpu: 45,
-  cpus: [ 45, 45, 45 ],
-  pollCounter: 0,
-  maxPollTime: 0,
-  minPollTime: 999999,
+  api._stats = {
+    report: !!getEnv( 'MITERU_STATS' ),
+    cpu: 45,
+    cpus: [ 45, 45, 45 ],
+    pollCounter: 0,
+    maxPollTime: 0,
+    minPollTime: 999999,
+  }
 
   // extra polling time based on number of files watched
   extraTime: 100
 }
+
+  delete api._disableCpuSmoothing
+}
+
+api.reset()
+
+var _watcherIds = 1
 
 api.watch = function watch ( file, opts, callback ) {
   if ( typeof file !== 'string' ) {
