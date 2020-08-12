@@ -1084,7 +1084,7 @@ test( 'check file activity flagging from glob', function ( t ) {
   } )
 } )
 
-test.only( 'check file activity flagging', function ( t ) {
+test( 'check file activity flagging', function ( t ) {
   t.timeoutAfter( 7500 )
 
   prepareTestFiles( function () {
