@@ -574,7 +574,7 @@ function createFileWatcher ( filepath ) {
 
     Object.keys( fw.watchers ).forEach( function ( key ) {
       var watcher = fw.watchers[ key ]
-      // clear the file from the watch list of the wathers
+      // clear the file from the watch list of the watchers
       delete watcher.files[ fw.filepath ]
     } )
 
