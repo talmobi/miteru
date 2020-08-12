@@ -405,6 +405,7 @@ test( 'cover NOEXIST_INTERVAL and NOEXISTS_SLEEP_DELAY', function ( t ) {
       'test pre-cleaned properly'
     )
 
+    miteru._disableCpuSmoothing = true
     miteru._NOEXISTS_SLEEP_DELAY = 1000
 
     fs.writeFileSync( filepath, 'module.exports = "abra"' )
