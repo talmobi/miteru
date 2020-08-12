@@ -219,8 +219,10 @@ api.watch = function watch ( file, opts, callback ) {
     fileCounter: 0
   }
 
+  // set initFlagged for files added to the watcher within the same tick (event loop) (files added on/during init).
   var _initFlagged = true
   setTimeout( function () {
+    // turn the flag off for all other files added after the first tick (event loop) (on/during init).
     _initFlagged = false
   }, 0 )
 
