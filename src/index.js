@@ -523,6 +523,11 @@ function watchFile ( watcher, file, initFlagged ) {
     _fileWatchers[ filepath ] = fw
   }
 
+  if ( watcher.files[ filepath ] === fw ) {
+    DEBUG.LOG && log( '(ignored) local watcher already watching that file' )
+    return
+  }
+
   watcher.files[ filepath ] = fw
   fw.watchers[ watcher.id ] = watcher
   watcher.fileCounter++
