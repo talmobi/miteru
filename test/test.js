@@ -1061,6 +1061,7 @@ test.only( 'check file activity flagging', function ( t ) {
     var filepath1 = path.join( __dirname, 'tmp', 'filepath1.js' )
     var filepath2 = path.join( __dirname, 'tmp', 'filepath2.js' )
     var filepath3 = path.join( __dirname, 'tmp', 'filepath3.js' )
+    var filepath4 = path.join( __dirname, 'tmp', 'filepath4.js' )
 
     var timestamp = Date.now()
 
@@ -1070,28 +1071,53 @@ test.only( 'check file activity flagging', function ( t ) {
       filepath1 + ':' + 'true',
       filepath2 + ':' + 'undefined',
       filepath3 + ':' + 'undefined',
+      filepath4 + ':' + 'true',
 
       filepath1 + ':' + 'true',
       filepath2 + ':' + 'true',
       filepath3 + ':' + 'undefined',
+      filepath4 + ':' + 'false',
 
       filepath1 + ':' + 'false',
       filepath2 + ':' + 'true',
       filepath3 + ':' + 'true',
+      filepath4 + ':' + 'false',
 
       filepath1 + ':' + 'true',
       filepath2 + ':' + 'false',
-      filepath3 + ':' + 'true'
+      filepath3 + ':' + 'true',
+      filepath4 + ':' + 'false'
+    ]
+
+    var expectedBuf = [
+      '',
+
+      'init',
+      filepath1,
+
+      'init',
+      filepath4,
+
+      'add',
+      filepath2,
+
+      'add',
+      filepath3,
+
+      'change',
+      filepath1
     ]
 
     var buffer = [ '' ]
+    var buf = [ '' ]
 
     t.ok(
       verifyFileCleaning(
         [
           filepath1,
           filepath2,
-          filepath3
+          filepath3,
+          filepath4
         ]
       ),
       'test pre-cleaned properly'
@@ -1100,6 +1126,9 @@ test.only( 'check file activity flagging', function ( t ) {
     fs.writeFileSync( filepath1, 'foo' )
     fs.writeFileSync( filepath2, 'foo' )
     fs.writeFileSync( filepath3, 'foo' )
+    fs.writeFileSync( filepath4, 'foo' )
+
+    fs.utimesSync( filepath4, Date.now() / 1000, 1 )
 
     _lastMaxActiveListLength = miteru._MAX_ACTIVE_LIST_LENGTH
     miteru._MAX_ACTIVE_LIST_LENGTH = 2
@@ -1107,14 +1136,23 @@ test.only( 'check file activity flagging', function ( t ) {
     var w = miteru.watch( filepath1, function ( evt, filepath ) {
       // do nothing
       console.log( evt + ':' + filepath )
-      next()
+      buf.push( evt )
+      buf.push( filepath )
+
+      if ( evt === 'change' || evt === 'add' ) next()
     } )
+
+    setTimeout( next, ACTION_INTERVAL )
+
+    w.add( filepath4 ) // will be pushed off from the active list for coverage
 
     var actions = [
       function ( next ) {
         buffer.push( filepath1 + ':' + miteru._getFileWatcher( filepath1 ).active )
         buffer.push( filepath2 + ':' + miteru._getFileWatcher( filepath2 ) )
         buffer.push( filepath3 + ':' + miteru._getFileWatcher( filepath3 ) )
+        buffer.push( filepath4 + ':' + miteru._getFileWatcher( filepath4 ).active )
+
         fs.writeFileSync( filepath2, 'bar' )
         w.add( filepath2 )
       },
@@ -1122,6 +1160,8 @@ test.only( 'check file activity flagging', function ( t ) {
         buffer.push( filepath1 + ':' + miteru._getFileWatcher( filepath1 ).active )
         buffer.push( filepath2 + ':' + miteru._getFileWatcher( filepath2 ).active )
         buffer.push( filepath3 + ':' + miteru._getFileWatcher( filepath3 ) )
+        buffer.push( filepath4 + ':' + miteru._getFileWatcher( filepath4 ).active )
+
         fs.writeFileSync( filepath3, 'bar' )
         w.add( filepath3 )
       },
@@ -1129,18 +1169,18 @@ test.only( 'check file activity flagging', function ( t ) {
         buffer.push( filepath1 + ':' + miteru._getFileWatcher( filepath1 ).active )
         buffer.push( filepath2 + ':' + miteru._getFileWatcher( filepath2 ).active )
         buffer.push( filepath3 + ':' + miteru._getFileWatcher( filepath3 ).active )
+        buffer.push( filepath4 + ':' + miteru._getFileWatcher( filepath4 ).active )
+
         fs.writeFileSync( filepath1, 'bar' )
       }
     ]
-
-    // setTimeout( next, ACTION_INTERVAL )
 
     function next () {
       var a = actions.shift()
       if ( a ) {
         a( function ( err ) {
           if ( err ) throw err
-          // setTimeout( next, ACTION_INTERVAL )
+          setTimeout( next, ACTION_INTERVAL )
         } )
       } else {
         setTimeout( finish, ACTION_INTERVAL )
@@ -1153,6 +1193,7 @@ test.only( 'check file activity flagging', function ( t ) {
       buffer.push( filepath1 + ':' + miteru._getFileWatcher( filepath1 ).active )
       buffer.push( filepath2 + ':' + miteru._getFileWatcher( filepath2 ).active )
       buffer.push( filepath3 + ':' + miteru._getFileWatcher( filepath3 ).active )
+      buffer.push( filepath4 + ':' + miteru._getFileWatcher( filepath4 ).active )
 
       t.deepEqual(
         buffer,
@@ -1161,21 +1202,32 @@ test.only( 'check file activity flagging', function ( t ) {
       )
 
       t.deepEqual(
+        buf,
+        expectedBuf,
+        'expected events OK'
+      )
+
+      t.deepEqual(
         w.getWatched(),
         [
           filepath1,
           filepath2,
-          filepath3
+          filepath3,
+          filepath4
         ],
-        'expected files (2) still being watched'
+        'expected files (4) still being watched'
       )
 
       w.unwatch( filepath1 )
 
       t.deepEqual(
         w.getWatched(),
-        [ filepath2, filepath3 ],
-        'expected files (2) still being watched'
+        [
+          filepath2,
+          filepath3,
+          filepath4
+        ],
+        'expected files (3) still being watched'
       )
 
       w.unwatch( '**' )
