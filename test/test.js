@@ -1011,11 +1011,11 @@ test( 'check file activity flagging from glob', function ( t ) {
     _lastMaxActiveListLength = miteru._MAX_ACTIVE_LIST_LENGTH
     miteru._MAX_ACTIVE_LIST_LENGTH = 2
 
-    var _timeout
-
+    var initCounter = 0
     var w = miteru.watch( 'test/tmp/**/*.*', function ( evt, filepath ) {
       switch ( evt ) {
         case 'init':
+          initCounter++
           buffer.push( 'init: ' + filepath )
           break
 
@@ -1033,8 +1033,7 @@ test( 'check file activity flagging from glob', function ( t ) {
           break
       }
 
-      clearTimeout( _timeout )
-      _timeout = setTimeout( next, ACTION_INTERVAL )
+      if ( initCounter === 2 ) setTimeout( next, ACTION_INTERVAL )
     } )
 
     var actions = [
