@@ -8,9 +8,6 @@ var minimatch = require( 'minimatch' )
 
 var ALWAYS_COMPARE_FILECONTENT = false
 
-var NOEXISTS_SLEEP_DELAY = ( 1000 * 15 )
-var NOEXIST_INTERVAL = 400 // special polling interval for files that do not exist
-
 var MAX_ATTEMPTS = 5
 var ATTEMPT_INTERVAL = 25 // milliseconds
 
@@ -165,6 +162,9 @@ var api = module.exports = {}
 
 api._MAX_ACTIVE_LIST_LENGTH = 6
 api._CPU_SMOOTHING_DELAY = 3000 // milliseconds
+
+api._NOEXISTS_SLEEP_DELAY = ( 1000 * 15 )
+api._NOEXIST_INTERVAL = 400 // special polling interval for files that do not exist
 
 api.getWatched = function getWatched () {
   // TODO caching? premature optimization?
@@ -640,9 +640,9 @@ function schedulePoll ( fw, forcedInterval ) {
 
       // slow down polling for nonexistent files
       // that aren't hot
-      if ( delta > NOEXISTS_SLEEP_DELAY ) {
-        if ( interval < NOEXIST_INTERVAL ) {
-          interval = NOEXIST_INTERVAL
+      if ( delta > api._NOEXISTS_SLEEP_DELAY ) {
+        if ( interval < api._NOEXIST_INTERVAL ) {
+          interval = api._NOEXIST_INTERVAL
         }
       }
     } else {
