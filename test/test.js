@@ -975,7 +975,7 @@ test( 'check file activity flagging from glob', function ( t ) {
       '',
       'init: ' + filepath1,
       'init: ' + filepath2,
-      'init: ' + filepath3
+      'add: ' + filepath3
     ]
 
     var buffer = [ '' ]
@@ -1007,7 +1007,6 @@ test( 'check file activity flagging from glob', function ( t ) {
 
     fs.writeFileSync( filepath1, 'foo' )
     fs.writeFileSync( filepath2, 'foo' )
-    fs.writeFileSync( filepath3, 'foo' )
 
     _lastMaxActiveListLength = miteru._MAX_ACTIVE_LIST_LENGTH
     miteru._MAX_ACTIVE_LIST_LENGTH = 2
@@ -1035,8 +1034,27 @@ test( 'check file activity flagging from glob', function ( t ) {
       }
 
       clearTimeout( _timeout )
-      _timeout = setTimeout( finish, ACTION_INTERVAL )
+      _timeout = setTimeout( next, ACTION_INTERVAL )
     } )
+
+    var actions = [
+      function () {
+        fs.writeFileSync( filepath3, 'foo' )
+        w.add( 'test/tmp/**/*.*' )
+      },
+    ]
+
+    function next () {
+      var a = actions.shift()
+      if ( a ) {
+        a( function ( err ) {
+          if ( err ) throw err
+          setTimeout( next, ACTION_INTERVAL )
+        } )
+      } else {
+        setTimeout( finish, ACTION_INTERVAL )
+      }
+    }
 
     function finish () {
       miteru._MAX_ACTIVE_LIST_LENGTH = _lastMaxActiveListLength
