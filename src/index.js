@@ -202,6 +202,9 @@ api.reset = function reset () {
   } )
   _activeList.length = 0
 
+  api._NOEXISTS_SLEEP_DELAY = ( 1000 * 15 )
+  api._NOEXIST_INTERVAL = 400 // special polling interval for files that do not exist
+
   api._MAX_ACTIVE_LIST_LENGTH = 6
   api._CPU_SMOOTHING_DELAY = 3000 // milliseconds
 }
