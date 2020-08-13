@@ -706,8 +706,9 @@ function pollFile ( fw ) {
 
     if ( err ) {
       switch ( err.code ) {
-        case 'EPERM':
         case 'ENOENT':
+        case 'EACCES':
+        case 'EPERM':
           debugLog( 'enoent', ' === POLL ENOENT === ' )
           handleFSStatError( fw )
           break
