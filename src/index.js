@@ -264,7 +264,8 @@ api.watch = function watch ( file, opts, callback ) {
           if ( err ) {
             if ( !( err instanceof Array ) ) err = [ err ]
             err.forEach( function ( e ) {
-              console.error( e )
+              console.error( e && e.err && e.err.message )
+              throw e
             } )
           }
 
