@@ -47,6 +47,6 @@ setTimeout( function () {
     setTimeout( function () {
       console.log( 'closing watcher instance' )
       w.close()
-    }, 500 )
-  }, 500 )
+    }, 300 )
+  }, 300 )
 }, 300 )
