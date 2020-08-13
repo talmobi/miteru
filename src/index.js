@@ -105,7 +105,6 @@ switch ( ( process.env.MITERU_LOGLEVEL || '' ).toLowerCase() ) {
     break
 
   case 'dev':
-    DEBUG = DEBUG || {}
     DEBUG.DEV = true
     break
 
