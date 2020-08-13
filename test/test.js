@@ -386,7 +386,7 @@ test( 'error attempt to watch invalid filepaths', function ( t ) {
     var w
 
     try {
-      w = miteru.watch( {}, function ( evt, filepath ) {
+      w = miteru.watch( {}, {}, function ( evt, filepath ) {
         buffer.push( evt + ': ' + run( filepath ) )
       } )
       t.fail( 'invalid object filepath was allowed' )
@@ -395,7 +395,7 @@ test( 'error attempt to watch invalid filepaths', function ( t ) {
     }
 
     try {
-      w = miteru.watch( [ {} ], function ( evt, filepath ) {
+      w = miteru.watch( [ {} ], {}, function ( evt, filepath ) {
         buffer.push( evt + ': ' + run( filepath ) )
       } )
       t.fail( 'invalid array filepath was allowed' )
@@ -404,7 +404,7 @@ test( 'error attempt to watch invalid filepaths', function ( t ) {
     }
 
     try {
-      w = miteru.watch( 4, function ( evt, filepath ) {
+      w = miteru.watch( 4, {}, function ( evt, filepath ) {
         buffer.push( evt + ': ' + run( filepath ) )
       } )
       t.fail( 'invalid number filepath was allowed' )
