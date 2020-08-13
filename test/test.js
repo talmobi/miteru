@@ -1683,6 +1683,20 @@ test( 'watch a glob of files', function ( t ) {
 
       w.close()
 
+      try {
+        w.watch( filepath1 )
+        t.fail( '.watch should throw error when watcher has been closed.' )
+      } catch ( err ) {
+        t.equal( err.message, 'watcher has been closed.', 'throw error when using .watch on a closed watcher' )
+      }
+
+      try {
+        w.add( filepath1 )
+        t.fail( '.add should throw error when watcher has been closed.' )
+      } catch ( err ) {
+        t.equal( err.message, 'watcher has been closed.', 'throw error when using .add on a closed watcher' )
+      }
+
       t.deepEqual(
         miteru.getWatched(),
         [],
