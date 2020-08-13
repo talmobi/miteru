@@ -3096,7 +3096,29 @@ test( 'cover MITERU_LOGLEVEL full', function ( t ) {
     var filepath = path.join( __dirname, 'tmp', 'cover-miteru-loglevel.js' )
 
     var expected = [
-      '', 'ENOENT', 'module.exports = 777', 'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'HOT file: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'init: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'init: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'result: 777', 'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'watched files: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'closing watcher instance', 'exiting: 999', ''
+      '',
+      'ENOENT',
+      'module.exports = 777',
+      'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'HOT file: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'init: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'init: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'result: 777',
+      'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'watched files: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'closing watcher instance',
+      'exiting: 999',
+      ''
     ]
 
     var buffer = [ '\n' ]
