@@ -738,33 +738,30 @@ function pollFile ( fw ) {
       debugLog( 'dev', ' == fs.stat OK == ' )
 
       // debugging helpers
-      var debug = fw._debug
-      if ( debug ) {
-        if ( debug.removeAfterFSStat ) {
-          debug.removeAfterFSStat = false
-          // related test:
-          // 'watch a new file after init removed between FSStat:ing'
-          fs.unlinkSync( fw.filepath )
-        }
+      if ( fw._debug.removeAfterFSStat ) {
+        fw._debug.removeAfterFSStat = false
+        // related test:
+        // 'watch a new file after init removed between FSStat:ing'
+        fs.unlinkSync( fw.filepath )
+      }
 
-        if ( debug.chmodAfterFSStat ) {
-          debug.chmodAfterFSStat = false
-          // related test:
-          // 'watch a new file after init removed between FSStat:ing'
-          fs.chmodSync( fw.filepath, 0 /* no permission */ )
-        }
+      if ( fw._debug.chmodAfterFSStat ) {
+        fw._debug.chmodAfterFSStat = false
+        // related test:
+        // 'watch a new file after init removed between FSStat:ing'
+        fs.chmodSync( fw.filepath, 0 /* no permission */ )
+      }
 
-        if ( debug.changeContentAfterFSStat ) {
-          debug.changeContentAfterFSStat = false
-          // related test:
-          // 'watch a single file -- file content appended between FSStat:ing'
+      if ( fw._debug.changeContentAfterFSStat ) {
+        fw._debug.changeContentAfterFSStat = false
+        // related test:
+        // 'watch a single file -- file content appended between FSStat:ing'
 
-          var text = fs.readFileSync( fw.filepath ).toString( 'utf8' )
-          // console.log( 'text was: ' + text )
-          text += ' + "-FSStatDebug"'
-          fs.writeFileSync( fw.filepath, text )
-          debugLog( 'dev', 'written: ' + text )
-        }
+        var text = fs.readFileSync( fw.filepath ).toString( 'utf8' )
+        // console.log( 'text was: ' + text )
+        text += ' + "-FSStatDebug"'
+        fs.writeFileSync( fw.filepath, text )
+        debugLog( 'dev', 'written: ' + text )
       }
 
       fw.attempts = 0 // reset attempts
@@ -1022,12 +1019,10 @@ function pollFile ( fw ) {
 
           loadEvent( fw, 'change' )
         } else {
+          // file is now stable ( two consecutive polls have
+          // found no changes )
           // fire away events ( add, change ) when file is stable
-          if ( debug ) {
-            if ( !debug.keepUnstable ) {
-              dispatchPendingEvent( fw )
-            }
-          } else {
+          if ( !fw._debug.keepUnstable ) {
             dispatchPendingEvent( fw )
           }
         }
