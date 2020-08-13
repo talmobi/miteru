@@ -352,7 +352,7 @@ api.watch = function watch ( file, opts, callback ) {
       o[ key ] = fw.log[ key ]
     } )
 
-    return fw.log
+    return o
   }
 
   watcher.close = function close () {
