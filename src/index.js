@@ -685,12 +685,10 @@ function pollFile ( fw ) {
 
     if ( fw.locked !== true ) throw new Error( 'fw was not locked prior to fs.stat' )
 
-    if ( isFileWatcherEmpty( fw ) ) {
-      // TODO -- this isn't a legit error probably
-      // -> file was just removed from the watch list
-      // during its polling
+    if ( !_fileWatchers[ fw.filepath ] ) {
+      // TODO removed/cleared during fs.stat'ing, most likely
+      // harmless
       debugLog( 'log', 'fw is empty during fs.stat' )
-      fw.close()
       return undefined
     }
 
