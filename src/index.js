@@ -302,7 +302,6 @@ api.watch = function watch ( file, opts, callback ) {
         'no fileWatcher for [$1] found'.replace( '$1', filepath )
       )
     } else {
-      fw._debug = fw._debug || {}
       fw._debug[ key ] = value
     }
   }
@@ -575,7 +574,8 @@ function createFileWatcher ( filepath ) {
   var fw = {
     filepath: filepath,
     watchers: {},
-    log: {}
+    log: {},
+    _debug: {}
   }
 
   fw.close = function () {
