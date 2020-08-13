@@ -2221,6 +2221,7 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
 
     try {
       var www = miteru.watch()
+      t.equal( www.getLog( filepath ), undefined, 'cover undefined log of non-watched file OK' )
       www._setDebugFlag( filepath )
       t.fail( 'no expected error thrown' )
     } catch ( err ) {
