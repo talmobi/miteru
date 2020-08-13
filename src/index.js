@@ -681,19 +681,12 @@ function pollFile ( fw ) {
   }
 
   fs.stat( fw.filepath, function ( err, stats ) {
-    if ( fw.closed ) {
+    if ( fw.closed || _fileWatchers[ fw.filepath ] !== fw ) {
       debugLog( 'log', 'fw has been closed' )
       return undefined
     }
 
     if ( fw.locked !== true ) throw new Error( 'fw was not locked prior to fs.stat' )
-
-    if ( !_fileWatchers[ fw.filepath ] ) {
-      // TODO removed/cleared during fs.stat'ing, most likely
-      // harmless
-      debugLog( 'log', 'fw is empty during fs.stat' )
-      return undefined
-    }
 
     // TODO stats
     var now = Date.now()
