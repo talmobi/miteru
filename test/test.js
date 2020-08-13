@@ -983,6 +983,107 @@ test( 'watch a single file -- file content appended between FSStat:ing', functio
   } )
 } )
 
+test( 'cover debug.removeFileWatcherDuringFSStat', function ( t ) {
+  t.timeoutAfter( 7500 )
+
+  prepareTestFiles( function () {
+    var filepath = path.join( __dirname, 'tmp', 'main.js' )
+
+    var expected = [
+      '',
+      'init: abra'
+    ]
+
+    var buffer = [ '' ]
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    fs.writeFileSync( filepath, 'module.exports = "abra"' )
+
+    var w = miteru.watch( filepath, function ( evt, filepath ) {
+      switch ( evt ) {
+        case 'init':
+          buffer.push( 'init: ' + run( filepath ) )
+          miteru._getFileWatcher( filepath )._debug.removeFileWatcherDuringFSStat = true
+          break
+
+        default:
+          buffer.push( evt + ': ' + run( filepath ) )
+          break
+      }
+    } )
+
+    var actions = [
+      function ( next ) {
+        fs.writeFile( filepath, 'module.exports = 88', next )
+      },
+      function ( next ) {
+        rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
+          if ( err ) throw err
+          next()
+        } )
+      },
+      function ( next ) {
+        fs.writeFile( filepath, 'module.exports = 11', next )
+      },
+      function ( next ) {
+        fs.writeFile( filepath, 'module.exports = "kadabra"', next )
+      },
+      function ( next ) {
+        fs.writeFile( filepath, 'module.exports = "allakhazam"', next )
+        // console.log( 'written allakhazam' )
+      }
+    ]
+
+    setTimeout( next, ACTION_INTERVAL )
+
+    function next () {
+      var a = actions.shift()
+      if ( a ) {
+        a( function ( err ) {
+          if ( err ) throw err
+          setTimeout( next, ACTION_INTERVAL )
+        } )
+      } else {
+        setTimeout( finish, ACTION_INTERVAL )
+      }
+    }
+
+    function finish () {
+      t.deepEqual(
+        buffer,
+        expected,
+        'expected output OK'
+      )
+
+      t.deepEqual(
+        w.getWatched(),
+        [],
+        'expected files (1) still being watched'
+      )
+
+      w.close()
+
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  } )
+} )
+
 test( 'watch a single file with multiple watchers', function ( t ) {
   t.timeoutAfter( 7500 )
 
