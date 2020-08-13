@@ -223,7 +223,7 @@ api.watch = function watch ( file, opts, callback ) {
   // this object is returned by this function
   var watcher = {
     id: _watcherIds++,
-    opts: opts || {},
+    opts: opts,
     files: {},
     callback: callback,
     evtCallbacks: {},
