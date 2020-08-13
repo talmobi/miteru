@@ -53,13 +53,12 @@ var TEMPERATURE = {
 }
 
 var DEBUG = {
-  FILE: true,
-  LOG: true,
-  EVT: true
-}
-
-DEBUG = {
-  EVT: true
+  FILE: false,
+  TEMPERATURE: false,
+  ENOENT: false,
+  LOG: false,
+  EVT: true,
+  DEV: false
 }
 
 function debugLog ( type, msg ) {
@@ -115,7 +114,6 @@ switch ( ( process.env.MITERU_LOGLEVEL || '' ).toLowerCase() ) {
     break
 }
 
-DEBUG.DEV = false
 // DEBUG.TEMPERATURE = true
 
 function getEnv ( key ) {
