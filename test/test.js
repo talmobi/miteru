@@ -575,7 +575,7 @@ test( 'watch a single file using .on apis', function ( t ) {
 
     fs.writeFileSync( filepath, 'module.exports = "abra"' )
 
-    var w = miteru.watch( filepath )
+    var w = miteru.watch( [ filepath ] )
     var w2 = miteru.watch( filepath )
 
     w.on( 'init', function ( filepath ) {
