@@ -2571,6 +2571,167 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
   } )
 } )
 
+test( 'watch a new file -- file permissions changed between FSStat:ing', function ( t ) {
+  t.timeoutAfter( 7500 )
+
+  prepareTestFiles( function () {
+    var filepath1 = path.join( __dirname, 'tmp', 'filepath1.js' )
+    var filepath2 = path.join( __dirname, 'tmp', 'filepath2.js' )
+
+    var timestamp = Date.now()
+
+    var expected = [
+      ''
+      , 'init: abra'
+      , 'change: 88'
+      , 'change: ' + 'EACCES'
+      , 'unlink: ' + 'ENOENT'
+    ]
+
+    var buffer = [ '' ]
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath1,
+          filepath2
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    fs.writeFileSync( filepath1, 'module.exports = "abra"' )
+
+    var callNextOnEvent = false
+
+    var w = miteru.watch( filepath1, function ( evt, filepath ) {
+      console.log( 'evt: ' + evt )
+
+      var r
+
+      try {
+        r = run( filepath )
+      } catch ( err ) {
+        r = err.code
+      }
+
+      buffer.push( evt + ': ' + r )
+
+      if ( callNextOnEvent ) {
+        callNextOnEvent = false
+        setTimeout( next, ACTION_INTERVAL )
+      }
+    })
+
+    setTimeout( next, ACTION_INTERVAL )
+
+    function next () {
+      var a = actions.shift()
+      if ( a ) {
+        a()
+      } else {
+        setTimeout( finish, ACTION_INTERVAL )
+      }
+    }
+
+    var actions = [
+      function () {
+        callNextOnEvent = true
+
+        fs.writeFile( filepath1, 'module.exports = 88', function ( err ) {
+          if ( err ) throw err
+        } )
+      },
+      function () {
+        callNextOnEvent = false
+
+        w._setDebugFlag( filepath1, 'chmodAfterFSStat', true )
+
+        t.equal(
+          w.getLog( filepath1 )[ 'FSStatReadFileSyncErrors' ],
+          undefined,
+          'FSStatReadFileSyncErrors OK ( undefined )'
+        )
+
+        fs.writeFileSync( filepath1, 'module.exports = 111', function ( err ) {
+          if ( err ) throw err
+        } )
+
+        setTimeout( next, ACTION_INTERVAL )
+      },
+      function () {
+        fs.readFile( filepath1, function ( err ) {
+          if ( err && err.code ) {
+            t.equal(
+              err.code,
+              'EACCES',
+              'file permissions was changed correctly between FSStat'
+            )
+
+            t.equal(
+              w.getLog( filepath1 )[ 'FSStatReadFileSyncErrors' ],
+              2,
+              'FSStatReadFileSyncErrors OK ( 2 )'
+            )
+
+            setTimeout( next, ACTION_INTERVAL )
+          } else {
+            t.fail( 'file permissions was not set as expected' )
+          }
+        } )
+      },
+      function () {
+        callNextOnEvent = true
+        rimraf.sync( filepath1 )
+      },
+    ]
+
+    function finish () {
+      t.deepEqual(
+        buffer,
+        expected,
+        'expected output OK'
+      )
+
+      t.equal(
+        w.getLog( filepath1 )[ 'FSStatReadFileSyncErrors' ],
+        2,
+        'FSStatReadFileSyncErrors OK ( 1 )'
+      )
+
+      t.deepEqual(
+        w.getWatched(),
+        [ filepath1 ],
+        'expected files (1) still being watched'
+      )
+
+      t.deepEqual(
+        miteru.getWatched(),
+        [ filepath1 ],
+        'miteru expected files (1) still being watched'
+      )
+
+      w.close()
+
+      t.deepEqual(
+        w.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'miteru expected files (0) still being watched'
+      )
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  } )
+} )
+
 test( 'loadEvent abortion', function ( t ) {
   t.timeoutAfter( 7500 )
 
