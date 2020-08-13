@@ -175,12 +175,6 @@ api._getFileWatcher = function _getFileWatcher ( file ) {
 
 api._activeList = _activeList
 
-api.getStats = function getStats () {
-  var s = Object.assign( {}, api._stats )
-  delete s.report
-  return s
-}
-
 api.reset = function reset () {
   Object.keys( _fileWatchers ).forEach( function ( key ) {
     var fw = _fileWatchers[ key ]
