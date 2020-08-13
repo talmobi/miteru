@@ -211,13 +211,10 @@ var _watcherIds = 1
 function selectFirstOfType ( items, type ) {
   for ( var i = 0; i < items.length; i++ ) {
     var item = items[ i ]
-    if ( typeof item === type ) { // eslint-disable-line
-      items.splice( 0, i )
-      return item
-    }
-
-    if ( type === 'array' && item instanceof Array ) {
-      items.splice( 0, i )
+    var isArray = ( Array.isArray( item ) )
+    var itemType = isArray ? 'array' : ( typeof item )
+    if ( itemType === type ) { // eslint-disable-line
+      items.splice( 0, i + 1 ) // mutates array
       return item
     }
   }
@@ -232,7 +229,7 @@ api.watch = function watch ( file, opts, callback ) {
 
   callback = selectFirstOfType( args, 'function' )
   opts = selectFirstOfType( args, 'object' )
-  file = args[ 0 ]
+  file = args[ args.length - 1 ]
 
   // this object is returned by this function
   var watcher = {
