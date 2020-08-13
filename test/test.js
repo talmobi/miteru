@@ -363,6 +363,77 @@ test( 'watch a single file -- of size 0', function ( t ) {
   } )
 } )
 
+test( 'error attempt to watch invalid filepaths', function ( t ) {
+  t.timeoutAfter( 7500 )
+
+  prepareTestFiles( function () {
+    var filepath = path.join( __dirname, 'tmp', 'main.js' )
+
+    var expected = [ '' ]
+    var buffer = [ '' ]
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    fs.writeFileSync( filepath, 'module.exports = "abra"' )
+
+    var w
+
+    try {
+      w = miteru.watch( {}, function ( evt, filepath ) {
+        buffer.push( evt + ': ' + run( filepath ) )
+      } )
+      t.fail( 'invalid object filepath was allowed' )
+    } catch ( err ) {
+      t.equal( err.message, 'file was not a string' )
+    }
+
+    try {
+      w = miteru.watch( [ {} ], function ( evt, filepath ) {
+        buffer.push( evt + ': ' + run( filepath ) )
+      } )
+      t.fail( 'invalid array filepath was allowed' )
+    } catch ( err ) {
+      t.equal( err.message, 'file was not a string' )
+    }
+
+    try {
+      w = miteru.watch( 4, function ( evt, filepath ) {
+        buffer.push( evt + ': ' + run( filepath ) )
+      } )
+      t.fail( 'invalid number filepath was allowed' )
+    } catch ( err ) {
+      t.equal( err.message, 'file was not a string' )
+    }
+
+    finish()
+
+    function finish () {
+      t.deepEqual(
+        buffer,
+        expected,
+        'expected output OK'
+      )
+
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  } )
+} )
+
 test( 'cover MITERU_STATS MITERU_PROMOTION_LIST', function ( t ) {
   t.timeoutAfter( 7500 )
 
