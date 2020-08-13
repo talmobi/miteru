@@ -3097,6 +3097,7 @@ test( 'attempt watch a directory and fail on error', function ( t ) {
       ''
       , 'error'
       , 'onError'
+      , 'w2:error'
     ]
 
     var buffer = [ '' ]
@@ -3116,6 +3117,13 @@ test( 'attempt watch a directory and fail on error', function ( t ) {
       // console.log( 'evt: ' + evt )
       next()
     } )
+
+    var w2 = miteru.watch( filepath )
+    w2.on( 'error', function ( filepath ) {
+      buffer.push( 'w2:error' )
+    } )
+
+    var w3 = miteru.watch( filepath ) // cover when no evtCallbacks set
 
     w.on( 'error', function ( filepath ) {
       buffer.push( 'onError'  )
