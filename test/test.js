@@ -2092,6 +2092,14 @@ test( 'watch a new file after init removed between FSStat:ing', function ( t ) {
 
     var buffer = [ '' ]
 
+    try {
+      var www = miteru.watch()
+      www._setDebugFlag( filepath )
+      t.fail( 'no expected error thrown' )
+    } catch ( err ) {
+      t.equal( err.message, 'no fileWatcher for [$1] found'.replace( '$1', filepath ) )
+    }
+
     t.ok(
       verifyFileCleaning(
         [
