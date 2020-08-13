@@ -136,11 +136,6 @@ var _fileWatchers = {}
 // prioritised for polling ( faster polling ) )
 var _activeList = []
 
-var _options = {
-  // minimum polling interval per file
-  minInterval: undefined
-}
-
 // cleanup
 process.on( 'exit', function () {
   _running = false
@@ -198,6 +193,11 @@ api.reset = function reset () {
     minPollTime: 999999,
     // extra polling time based on number of files watched
     extraTime: 100
+  }
+
+  api.options = {
+    // minimum polling interval per file
+    minInterval: undefined
   }
 
   delete api._disableCpuSmoothing
@@ -631,7 +631,7 @@ function schedulePoll ( fw, forcedInterval ) {
     delete fw._noExistsTime
   }
 
-  var opts = _options
+  var opts = api.options
   if ( opts.minInterval && interval < opts.minInterval ) {
     interval = opts.minInterval
   }
