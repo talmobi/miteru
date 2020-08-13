@@ -3087,6 +3087,72 @@ test( 'cover MITERU_LOGLEVEL temp', function ( t ) {
   } )
 } )
 
+test( 'cover MITERU_LOGLEVEL full', function ( t ) {
+  t.timeoutAfter( 7500 )
+
+  process.env.DEV = false
+
+  prepareTestFiles( function () {
+    var filepath = path.join( __dirname, 'tmp', 'cover-miteru-loglevel.js' )
+
+    var expected = [
+      '', 'ENOENT', 'module.exports = 777', 'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'HOT file: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'init: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'init: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'result: 777', 'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL READ CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'FILE WILL COMPARE CONTENT   : /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'watched files: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js', 'closing watcher instance', 'exiting: 999', ''
+    ]
+
+    var buffer = [ '\n' ]
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    process.env.MITERU_LOGLEVEL = 'full'
+
+    var _t = setTimeout( function () {
+      t.fail( 'timed out' )
+      try {
+        spawn.kill()
+      } catch ( err ) {}
+    }, 7500 )
+
+    var spawn = childProcess.spawn( 'node', [
+      path.join( __dirname, 'test-miteru-loglevel.js' )
+    ] )
+
+    spawn.stdout.on( 'data', function ( data ) {
+      buffer.push( data.toString( 'utf8' ) )
+    } )
+
+    spawn.stderr.on( 'data', function ( data ) {
+      buffer.push( data.toString( 'utf8' ) )
+    } )
+
+    spawn.on( 'exit', function ( code ) {
+      finish()
+    } )
+
+    function finish () {
+      clearTimeout( _t )
+
+      t.deepEqual(
+        buffer.join( '' ).split( /[\r\n]+/g ).map( function ( line ) {
+          return line.trim()
+        } ),
+        expected,
+        'expected output OK'
+      )
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  } )
+} )
+
 test( 'process exits when no files being watched', function ( t ) {
   t.timeoutAfter( 7500 )
 
