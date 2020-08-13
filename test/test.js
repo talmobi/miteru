@@ -2953,7 +2953,7 @@ test( 'loadEvent abortion', function ( t ) {
         fs.writeFile( filepath, 'module.exports = "batman"', function ( err ) {
           if ( err ) throw err
 
-          setTimeout( next, ACTION_INTERVAL )
+          setTimeout( next, 1000 )
         } )
       },
       function () {
