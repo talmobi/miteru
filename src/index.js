@@ -402,34 +402,26 @@ api.watch = function watch ( file, opts, callback ) {
 }
 
 function statsFunction () {
-  var _lastCpuUsage = {}
-  if ( process.cpuUsage ) {
-    _lastCpuUsage = process.cpuUsage()
-  }
-
-  var _lastCpuUsageTime = Date.now()
-
   statsFunction.reset = function reset () {
     clearTimeout( statsFunction.timeout )
     statsFunction.timeout = undefined
     statsFunction.time = Date.now()
-    _lastCpuUsage = {}
-    _lastCpuUsageTime = Date.now()
+
+    statsFunction._lastCpuUsage = {}
+    statsFunction._lastCpuUsage = process.cpuUsage()
+    statsFunction._lastCpuUsageTime = Date.now()
   }
+  statsFunction.reset()
 
   function usage () {
-    if ( !process.cpuUsage ) {
-      return '???'
-    }
-
     var cpuUsage = process.cpuUsage()
     var now = Date.now()
 
-    var prevTotal = ( _lastCpuUsage.user + _lastCpuUsage.system )
+    var prevTotal = ( statsFunction._lastCpuUsage.user + statsFunction._lastCpuUsage.system )
     var total = ( cpuUsage.user + cpuUsage.system )
     var diff = ( total - prevTotal ) + 0.01
 
-    var delta = ( now - _lastCpuUsageTime )
+    var delta = ( now - statsFunction._lastCpuUsageTime )
     var limit = ( delta * 1000 ) + 0.1 // microseconds to milliseconds
 
     var pct = (
@@ -438,8 +430,8 @@ function statsFunction () {
         .slice( 0, 6 )
     )
 
-    _lastCpuUsage = cpuUsage
-    _lastCpuUsageTime = now
+    statsFunction._lastCpuUsage = cpuUsage
+    statsFunction._lastCpuUsageTime = now
 
     return pct
   }
