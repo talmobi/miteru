@@ -668,6 +668,15 @@ function pollFile ( fw ) {
   // TODO rethink fs.readFileSync situation
   // ( could be that fs.stat is outdated when fs.readFileSync is performed )
 
+  if ( fw._debug.removeFileWatcherDuringFSStat ) {
+    fw._debug.removeFileWatcherDuringFSStat = false
+
+    Object.keys( fw.watchers ).forEach( function ( key ) {
+      var watcher = fw.watchers[ key ]
+      watcher.unwatch( fw.filepath )
+    } )
+  }
+
   fs.stat( fw.filepath, function ( err, stats ) {
     if ( fw.closed ) {
       debugLog( 'log', 'fw has been closed' )
