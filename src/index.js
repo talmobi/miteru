@@ -746,6 +746,13 @@ function pollFile ( fw ) {
           fs.unlinkSync( fw.filepath )
         }
 
+        if ( debug.chmodAfterFSStat ) {
+          debug.chmodAfterFSStat = false
+          // related test:
+          // 'watch a new file after init removed between FSStat:ing'
+          fs.chmodSync( fw.filepath, 0 /* no permission */ )
+        }
+
         if ( debug.changeContentAfterFSStat ) {
           debug.changeContentAfterFSStat = false
           // related test:
