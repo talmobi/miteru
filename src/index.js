@@ -8,8 +8,9 @@ var minimatch = require( 'minimatch' )
 
 var ALWAYS_COMPARE_FILECONTENT = false
 
-var MAX_ATTEMPTS = 5
 var ATTEMPT_INTERVAL = 25 // milliseconds
+var MAX_ATTEMPTS = 5
+var MAX_READ_FILE_SYNC_ATTEMPTS = 2
 
 var START_TIME = Date.now()
 
@@ -575,7 +576,9 @@ function createFileWatcher ( filepath ) {
     filepath: filepath,
     watchers: {},
     log: {},
-    _debug: {}
+    _debug: {},
+    readFileSyncAttempts: 0,
+    attempts: 0
   }
 
   fw.close = function () {
@@ -726,7 +729,7 @@ function pollFile ( fw ) {
           // error counter but this event alone cannot consider the file
           // non-existent -- it's a good indicator that the file is unstable
           // and might not exist soon
-          fw.attempts = ( fw.attempts || 0 ) + 1 // increment attempts
+          fw.attempts++
 
           // schedule next poll faster than normal ( ATTEMPT_INTERVAL )
           unlockFile( fw )
@@ -836,6 +839,10 @@ function pollFile ( fw ) {
         shouldCompareFileContents
       )
 
+      if ( fw.readFileSyncAttempts >= MAX_READ_FILE_SYNC_ATTEMPTS ) {
+        shouldReadFileContents = false
+      }
+
       if ( shouldReadFileContents ) {
         debugLog( 'file', 'FILE WILL READ CONTENT   : ' + fw.filepath )
       }
@@ -864,8 +871,10 @@ function pollFile ( fw ) {
         } catch ( err ) {
           switch ( err.code ) {
             case 'EPERM':
+            case 'EACCES':
             case 'ENOENT':
               fw.attempts++
+              fw.readFileSyncAttempts++
               // possibly if file is removed between a succesful fs.stat
               // and fs.readFileSync
               // -- simply let pollFile handle it ( and any errors ) again
@@ -973,6 +982,8 @@ function pollFile ( fw ) {
       fw.size = stats.size
       fw.mtime = stats.mtime
 
+      if ( !isEdgy ) fw.readFileSyncAttempts = 0 // reset attempts
+
       if ( fw._promoteOnNextStat && fw.mtime ) {
         fw._promoteOnNextStat = false
         promote( fw )
@@ -1057,7 +1068,7 @@ function pollFile ( fw ) {
 function handleFSStatError ( fw ) {
   var existedPreviously = ( fw.exists === true )
 
-  fw.attempts = ( fw.attempts || 0 ) + 1 // increment attempts
+  fw.attempts++
 
   if ( typeof fw.filepath !== 'string' ) {
     console.log( 'filepath was not a string!' )
