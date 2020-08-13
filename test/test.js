@@ -1673,7 +1673,7 @@ test( 'watch a glob of files', function ( t ) {
         'expected files (1) still being watched'
       )
 
-      w.unwatch( '**' )
+      w.clear()
 
       t.deepEqual(
         w.getWatched(),
