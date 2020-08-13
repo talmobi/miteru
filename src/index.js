@@ -706,8 +706,9 @@ function pollFile ( fw ) {
 
     if ( err ) {
       switch ( err.code ) {
-        case 'EPERM':
         case 'ENOENT':
+        case 'EACCES':
+        case 'EPERM':
           debugLog( 'enoent', ' === POLL ENOENT === ' )
           handleFSStatError( fw )
           break
@@ -870,9 +871,9 @@ function pollFile ( fw ) {
           debugLog( 'dev', 'read file contents: ' + fileContent.toString( 'utf8' ) )
         } catch ( err ) {
           switch ( err.code ) {
-            case 'EPERM':
             case 'EACCES':
             case 'ENOENT':
+            case 'EPERM':
               fw.attempts++
               fw.readFileSyncAttempts++
               // possibly if file is removed between a succesful fs.stat
