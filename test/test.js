@@ -214,6 +214,9 @@ test( 'watch a single file', function ( t ) {
 
       w.unwatch( filepath )
 
+      // conver already unwatched
+      w.unwatch( filepath )
+
       t.deepEqual(
         w.getWatched(),
         [],
