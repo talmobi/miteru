@@ -2939,6 +2939,79 @@ test( 'exit process after watcher is closed', function ( t ) {
   } )
 } )
 
+test( 'cover process exit handler', function ( t ) {
+  t.timeoutAfter( 7500 )
+
+  process.env.DEV = false
+
+  prepareTestFiles( function () {
+    var filepath = path.join( __dirname, 'tmp', 'cover-process-exit.js' )
+
+    var expected = [
+      '',
+      'ENOENT',
+      'module.exports = 777',
+      'init: ' + filepath,
+      'result: 777',
+      'exiting without closing to cover exit handler',
+      'exiting: 999',
+      ''
+    ]
+
+    var buffer = [ '\n' ]
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    process.env.MITERU_LOGLEVEL = 'silent'
+
+    var _t = setTimeout( function () {
+      t.fail( 'timed out' )
+      try {
+        spawn.kill()
+      } catch ( err ) {}
+    }, 7500 )
+
+    var spawn = childProcess.spawn( 'node', [
+      path.join( __dirname, 'test-process-exit.js' )
+    ] )
+
+    spawn.stdout.on( 'data', function ( data ) {
+      buffer.push( data.toString( 'utf8' ) )
+    } )
+
+    spawn.stderr.on( 'data', function ( data ) {
+      buffer.push( data.toString( 'utf8' ) )
+    } )
+
+    spawn.on( 'exit', function ( code ) {
+      finish()
+    } )
+
+    function finish () {
+      clearTimeout( _t )
+
+      t.deepEqual(
+        buffer.join( '' ).split( /[\r\n]+/g ).map( function ( line ) {
+          return line.trim()
+        } ),
+        expected,
+        'expected output OK'
+      )
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  } )
+} )
+
 test( 'process exits when no files being watched', function ( t ) {
   t.timeoutAfter( 7500 )
 
