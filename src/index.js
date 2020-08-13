@@ -269,14 +269,11 @@ api.watch = function watch ( file, opts, callback ) {
               watchFile( watcher, file, initFlagged )
             }
           } )
-
-          statsFunction.start()
         }
       )
     } else {
       // is a single file path
       watchFile( watcher, file, initFlagged )
-      statsFunction.start()
     }
 
     return watcher // chaining
@@ -508,6 +505,7 @@ function watchFile ( watcher, file, initFlagged ) {
     // add new file watcher
     fw = createFileWatcher( filepath )
     _fileWatchers[ filepath ] = fw
+    statsFunction.start()
   }
 
   if ( watcher.files[ filepath ] === fw ) {
