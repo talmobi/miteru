@@ -1014,7 +1014,7 @@ test( 'watch a single file with multiple watchers', function ( t ) {
       'test pre-cleaned properly'
     )
 
-    miteru.options.minInterval = 100
+    miteru.options.minInterval = 101
 
     fs.writeFileSync( filepath, 'module.exports = "abra"' )
 
