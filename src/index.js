@@ -208,18 +208,31 @@ api.reset()
 
 var _watcherIds = 1
 
+function selectFirstOfType ( items, type ) {
+  for ( var i = 0; i < items.length; i++ ) {
+    var item = items[ i ]
+    if ( typeof item === type ) { // eslint-disable-line
+      items.splice( 0, i )
+      return item
+    }
+
+    if ( type === 'array' && item instanceof Array ) {
+      items.splice( 0, i )
+      return item
+    }
+  }
+
+  return undefined
+}
+
 api.watch = function watch ( file, opts, callback ) {
-  if ( typeof file !== 'string' ) {
-    callback = opts
-    opts = file
-  }
+  var args = [ file, opts, callback ].filter( function ( item ) {
+    return !!item
+  } ).reverse()
 
-  if ( typeof opts !== 'object' ) {
-    callback = opts
-    opts = {}
-  }
-
-  if ( typeof callback !== 'function' ) callback = undefined
+  callback = selectFirstOfType( args, 'function' )
+  opts = selectFirstOfType( args, 'object' )
+  file = args[ 0 ]
 
   // this object is returned by this function
   var watcher = {
