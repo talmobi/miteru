@@ -239,6 +239,18 @@ api.watch = function watch ( file, opts, callback ) {
   }, 0 )
 
   watcher.add = function add ( file ) {
+    if ( !file ) return
+
+    if ( file instanceof Array ) {
+      return file.forEach( function ( f ) {
+        watcher.add( f )
+      } )
+    }
+
+    if ( typeof file !== 'string' ) {
+      throw new Error( 'file was not a string' )
+    }
+
     var isPattern = glob.hasMagic( file )
 
     // scope _initFlagged for these files
@@ -383,16 +395,8 @@ api.watch = function watch ( file, opts, callback ) {
     return watcher // chaining
   }
 
-  if ( file ) {
-    if ( typeof file === 'string' ) {
-      watcher.add( file )
-    } else if ( file instanceof Array ) {
-      file.forEach( function ( f ) {
-        if ( f && typeof f === 'string' ) {
-          watcher.add( f )
-        }
-      } )
-    }
+  if ( file != null ) {
+    watcher.add( file )
   }
 
   return watcher
@@ -1065,11 +1069,6 @@ function handleFSStatError ( fw ) {
   var existedPreviously = ( fw.exists === true )
 
   fw.attempts++
-
-  if ( typeof fw.filepath !== 'string' ) {
-    console.log( 'filepath was not a string!' )
-    return process.exit( 1 )
-  }
 
   var fileShouldExist = ( existedPreviously || fw.initFlagged )
 
