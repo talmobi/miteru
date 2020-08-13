@@ -246,7 +246,7 @@ api.watch = function watch ( file, opts, callback ) {
     _initFlagged = false
   }, 0 )
 
-  watcher.add = function ( file ) {
+  watcher.add = function add ( file ) {
     var isPattern = glob.hasMagic( file )
 
     // scope _initFlagged for these files
@@ -290,12 +290,12 @@ api.watch = function watch ( file, opts, callback ) {
     return watcher // chaining
   }
 
-  watcher.on = function ( evt, callback ) {
+  watcher.on = function on ( evt, callback ) {
     watcher.evtCallbacks[ evt ] = watcher.evtCallbacks[ evt ] || []
     watcher.evtCallbacks[ evt ].push( callback )
 
     // return off function
-    return function () {
+    return function off () {
       var i = watcher.evtCallbacks[ evt ].indexOf( callback )
       if ( i !== -1 ) {
         return watcher.evtCallbacks[ evt ].splice( i, 1 )
@@ -303,7 +303,7 @@ api.watch = function watch ( file, opts, callback ) {
     }
   }
 
-  watcher._setDebugFlag = function ( file, key, value ) {
+  watcher._setDebugFlag = function _setDebugFlag ( file, key, value ) {
     var filepath = path.resolve( file )
 
     var fw = watcher.files[ filepath ]
@@ -318,7 +318,7 @@ api.watch = function watch ( file, opts, callback ) {
     }
   }
 
-  watcher.unwatch = function ( file ) {
+  watcher.unwatch = function unwatch ( file ) {
     var isPattern = glob.hasMagic( file )
 
     if ( isPattern ) {
@@ -348,7 +348,7 @@ api.watch = function watch ( file, opts, callback ) {
     return Object.keys( watcher.files ).sort()
   }
 
-  watcher.getLog = function ( file ) {
+  watcher.getLog = function getLog ( file ) {
     var filepath = path.resolve( file )
 
     var fw = watcher.files[ filepath ]
@@ -363,7 +363,7 @@ api.watch = function watch ( file, opts, callback ) {
     return fw.log
   }
 
-  watcher.close = function () {
+  watcher.close = function close () {
     Object.keys( watcher.files ).forEach( function ( filepath ) {
       unwatchFile( watcher, filepath )
     } )
@@ -384,7 +384,7 @@ api.watch = function watch ( file, opts, callback ) {
   }
 
   // helper function
-  watcher.clear = function () {
+  watcher.clear = function clear () {
     watcher.unwatch( '**' )
 
     if ( watcher.getWatched().length !== 0 ) {
