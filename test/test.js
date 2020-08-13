@@ -3228,6 +3228,175 @@ test( 'cover MITERU_LOGLEVEL evt', function ( t ) {
   } )
 } )
 
+test( 'cover MITERU_LOGLEVEL dev', function ( t ) {
+  t.timeoutAfter( 7500 )
+
+  process.env.DEV = false
+
+  prepareTestFiles( function () {
+    var filepath = path.join( __dirname, 'tmp', 'cover-miteru-loglevel.js' )
+
+    var expected = [
+      '',
+      'ENOENT',
+      'module.exports = 777',
+      '== fs.stat:ing ==',
+      '== fs.stat OK ==',
+      'is edgy',
+      'read file contents: module.exports = 777',
+      '== 1 ==',
+      '== 2 ==',
+      'size was: undefined',
+      'size now: 20',
+      '== 3 ==',
+      '== 4 ==',
+      'fileContent updated: module.exports = 777',
+      '== 5 ==',
+      '== 6 ==',
+      '== 7 ==',
+      '== 8 ==',
+      '== 9 ==',
+      '== 12 ==',
+      'init: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'init evt -- sizeChanged true, mtimeChanged false, fileContentHasChanged false: [/Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js]',
+      '== 13 ==',
+      'init: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'result: 777',
+      '== fs.stat:ing ==',
+      '== fs.stat OK ==',
+      'is edgy',
+      'read file contents: module.exports = 777',
+      '== 1 ==',
+      '== 2 ==',
+      '== 3 ==',
+      '== 4 ==',
+      '== 5 ==',
+      '== 6 ==',
+      '== 7 ==',
+      '== 8 ==',
+      '== 9 ==',
+      '== 10 ==',
+      '== 11 ==',
+      '== fs.stat:ing ==',
+      '== fs.stat OK ==',
+      'is edgy',
+      'read file contents: module.exports = 777',
+      '== 1 ==',
+      '== 2 ==',
+      '== 3 ==',
+      '== 4 ==',
+      '== 5 ==',
+      '== 6 ==',
+      '== 7 ==',
+      '== 8 ==',
+      '== 9 ==',
+      '== 10 ==',
+      '== 11 ==',
+      '== fs.stat:ing ==',
+      '== fs.stat OK ==',
+      'is edgy',
+      'read file contents: module.exports = 777',
+      '== 1 ==',
+      '== 2 ==',
+      '== 3 ==',
+      '== 4 ==',
+      '== 5 ==',
+      '== 6 ==',
+      '== 7 ==',
+      '== 8 ==',
+      '== 9 ==',
+      '== 10 ==',
+      '== 11 ==',
+      '== fs.stat:ing ==',
+      '== fs.stat OK ==',
+      'is edgy',
+      'read file contents: module.exports = 777',
+      '== 1 ==',
+      '== 2 ==',
+      '== 3 ==',
+      '== 4 ==',
+      '== 5 ==',
+      '== 6 ==',
+      '== 7 ==',
+      '== 8 ==',
+      '== 9 ==',
+      '== 10 ==',
+      '== 11 ==',
+      '== fs.stat:ing ==',
+      '== fs.stat OK ==',
+      'is edgy',
+      'read file contents: module.exports = 777',
+      '== 1 ==',
+      '== 2 ==',
+      '== 3 ==',
+      '== 4 ==',
+      '== 5 ==',
+      '== 6 ==',
+      '== 7 ==',
+      '== 8 ==',
+      '== 9 ==',
+      '== 10 ==',
+      '== 11 ==',
+      'watched files: /Users/mollie/code/miteru/test/tmp/cover-miteru-loglevel.js',
+      'closing watcher instance',
+      'exiting: 999',
+      ''
+    ]
+
+    var buffer = [ '\n' ]
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    process.env.MITERU_LOGLEVEL = 'dev'
+
+    var _t = setTimeout( function () {
+      t.fail( 'timed out' )
+      try {
+        spawn.kill()
+      } catch ( err ) {}
+    }, 7500 )
+
+    var spawn = childProcess.spawn( 'node', [
+      path.join( __dirname, 'test-miteru-loglevel.js' )
+    ] )
+
+    spawn.stdout.on( 'data', function ( data ) {
+      buffer.push( data.toString( 'utf8' ) )
+    } )
+
+    spawn.stderr.on( 'data', function ( data ) {
+      buffer.push( data.toString( 'utf8' ) )
+    } )
+
+    spawn.on( 'exit', function ( code ) {
+      finish()
+    } )
+
+    function finish () {
+      clearTimeout( _t )
+
+      t.deepEqual(
+        buffer.join( '' ).split( /[\r\n]+/g ).map( function ( line ) {
+          return line.trim()
+        } ),
+        expected,
+        'expected output OK'
+      )
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  } )
+} )
+
 test( 'process exits when no files being watched', function ( t ) {
   t.timeoutAfter( 7500 )
 
