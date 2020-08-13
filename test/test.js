@@ -36,6 +36,8 @@ function run ( filepath ) {
 
   var t = fs.readFileSync( filepath, 'utf8' )
 
+  if ( t === '' ) return ''
+
   // try and see if there's issue with file content and require.resolve
   // since require.resolve seems to sometimes return as if the filepath was empty when it's not
   console.log( 't: ' + t )
@@ -183,6 +185,129 @@ test( 'watch a single file', function ( t ) {
       function ( next ) {
         fs.writeFile( filepath, 'module.exports = "allakhazam"', next )
         // console.log( 'written allakhazam' )
+      }
+    ]
+
+    // setTimeout( next, ACTION_INTERVAL )
+
+    function next () {
+      var a = actions.shift()
+      if ( a ) {
+        a( function ( err ) {
+          if ( err ) throw err
+        } )
+      } else {
+        setTimeout( finish, ACTION_INTERVAL )
+      }
+    }
+
+    function finish () {
+      t.deepEqual(
+        buffer,
+        expected,
+        'expected output OK'
+      )
+
+      t.deepEqual(
+        w.getWatched(),
+        [ filepath ],
+        'expected files (1) still being watched'
+      )
+
+      w.unwatch( filepath )
+
+      // conver already unwatched
+      w.unwatch( filepath )
+
+      t.deepEqual(
+        w.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
+      w.close()
+
+      t.deepEqual(
+        miteru.getWatched(),
+        [],
+        'expected files (0) still being watched'
+      )
+
+      setTimeout( function () {
+        t.end()
+      }, 100 )
+    }
+  } )
+} )
+
+test( 'watch a single file -- of size 0', function ( t ) {
+  t.timeoutAfter( 7500 )
+
+  prepareTestFiles( function () {
+    var filepath = path.join( __dirname, 'tmp', 'size-0-file.js' )
+
+    var expected = [
+      '',
+      'init: abra',
+      'change: ',
+      'unlink: ' + filepath
+    ]
+
+    var buffer = [ '' ]
+
+    t.ok(
+      verifyFileCleaning(
+        [
+          filepath
+        ]
+      ),
+      'test pre-cleaned properly'
+    )
+
+    fs.writeFileSync( filepath, 'module.exports = "abra"' )
+
+    var w = miteru.watch( filepath, function ( evt, filepath ) {
+      switch ( evt ) {
+        case 'init':
+          buffer.push( 'init: ' + run( filepath ) )
+          break
+
+        case 'add':
+          buffer.push( 'add: ' + run( filepath ) )
+          break
+
+        case 'unlink':
+          try {
+            fs.readFileSync( filepath )
+            t.fail( 'unlink event FAILURE (File still exists)' )
+          } catch ( err ) {
+            t.equal( err.code, 'ENOENT', 'unlink event OK (ENOENT)' )
+            buffer.push( 'unlink: ' + filepath )
+          }
+          break
+
+        case 'change':
+          buffer.push( 'change: ' + run( filepath ) )
+          break
+
+        default:
+          t.fail( 'unrecognized watch evt: [ ' + evt + ' ]' )
+          buffer.push( evt + ': ' + run( filepath ) )
+          break
+      }
+
+      // console.log( 'evt: ' + evt )
+      next()
+    } )
+
+    var actions = [
+      function ( next ) {
+        fs.writeFile( filepath, '', next )
+      },
+      function ( next ) {
+        rimraf( filepath, { maxBusyTries: 10 }, function ( err ) {
+          if ( err ) throw err
+        } )
       }
     ]
 
