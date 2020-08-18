@@ -732,7 +732,7 @@ function pollFile ( fw ) {
     } else { // no error
       if ( stats.size <= 0 && ( fw.size !== stats.size ) ) {
         debugLog( 'dev', ' ============ size was falsy: ' + stats.size )
-        if ( fw.attempts < MAX_ATTEMPTS * 2 ) {
+        if ( fw.attempts < MAX_ATTEMPTS ) {
           // handle as a potential ENOENT error, i.e., increment
           // error counter but this event alone cannot consider the file
           // non-existent -- it's a good indicator that the file is unstable
@@ -741,7 +741,7 @@ function pollFile ( fw ) {
 
           // schedule next poll faster than normal ( ATTEMPT_INTERVAL )
           unlockFile( fw )
-          return schedulePoll( fw, ATTEMPT_INTERVAL * 2 )
+          return schedulePoll( fw, ATTEMPT_INTERVAL )
         } else {
           // if we've exceeded attempts then assume the file exists
           // and it's intentionally empty ( of size 0 )
