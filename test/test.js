@@ -104,6 +104,42 @@ function verifyFileCleaning ( files ) {
   return files.length === counter
 }
 
+function reduceTolerableLogs ( tolerances, arr ) {
+  // remove logs when capped to tolerable levels when about
+  // every 1 of 100 runs logs will produce slightly different
+  // result due to async polling timings
+
+  const newLog = []
+  const memory = {}
+
+  for ( let i = 0; i < arr.length; i++ ) {
+    const line = arr[ i ]
+
+    // increment tolerance memory counters
+    Object.keys( tolerances ).forEach( function ( key ) {
+      const val = tolerances[ key ]
+      if ( line.indexOf( key ) >= 0 ) {
+        // matches
+        memory[ line ] = memory[ line ] || { tolerance: val, count: 0 } // init
+        memory[ line ].count++ // increment
+      }
+    } )
+
+    if ( memory[ line ] ) {
+      // tolerance has been set and remembered
+      // add if below tolerable levels
+      if ( memory[ line ].count < memory[ line ].tolerance ) {
+        newLog.push( line )
+      }
+    } else {
+      // no tolerance, add as is
+      newLog.push( line )
+    }
+  }
+
+  return newLog
+}
+
 test( 'watch a single file', function ( t ) {
   t.timeoutAfter( 7500 )
 
@@ -3488,6 +3524,10 @@ test( 'cover MITERU_LOGLEVEL full', function ( t ) {
       ''
     ]
 
+    const tolerances = {}
+    tolerances[ 'FILE WILL READ CONTENT   : ' + filepath ] = 4
+    tolerances[ 'FILE WILL COMPARE CONTENT   : ' + filepath ] = 4
+
     var buffer = [ '\n' ]
 
     t.ok(
@@ -3528,10 +3568,15 @@ test( 'cover MITERU_LOGLEVEL full', function ( t ) {
       clearTimeout( _t )
 
       t.deepEqual(
-        buffer.join( '' ).split( /[\r\n]+/g ).map( function ( line ) {
-          return line.trim()
-        } ),
-        expected,
+        reduceTolerableLogs( tolerances,
+          buffer
+          .join( '' )
+          .split( /[\r\n]+/g )
+          .map( function ( line ) {
+            return line.trim()
+          } )
+        ),
+        reduceTolerableLogs( tolerances, expected ),
         'expected output OK'
       )
 
@@ -3732,6 +3777,23 @@ test( 'cover MITERU_LOGLEVEL dev', function ( t ) {
       ''
     ]
 
+    const tolerances = {}
+    tolerances[ '== fs.stat:ing ==' ] = 4
+    tolerances[ '== fs.stat OK ==' ] = 4
+    tolerances[ 'is edgy' ] = 4
+    tolerances[ 'read file contents: module.exports = 777' ] = 4
+    tolerances[ '== 1 ==' ] = 4
+    tolerances[ '== 2 ==' ] = 4
+    tolerances[ '== 3 ==' ] = 4
+    tolerances[ '== 4 ==' ] = 4
+    tolerances[ '== 5 ==' ] = 4
+    tolerances[ '== 6 ==' ] = 4
+    tolerances[ '== 7 ==' ] = 4
+    tolerances[ '== 8 ==' ] = 4
+    tolerances[ '== 9 ==' ] = 4
+    tolerances[ '== 10 ==' ]  = 4
+    tolerances[ '== 11 ==' ]  = 4
+
     var buffer = [ '\n' ]
 
     t.ok(
@@ -3772,10 +3834,15 @@ test( 'cover MITERU_LOGLEVEL dev', function ( t ) {
       clearTimeout( _t )
 
       t.deepEqual(
-        buffer.join( '' ).split( /[\r\n]+/g ).map( function ( line ) {
-          return line.trim()
-        } ),
-        expected,
+        reduceTolerableLogs( tolerances,
+          buffer
+          .join( '' )
+          .split( /[\r\n]+/g )
+          .map( function ( line ) {
+            return line.trim()
+          } )
+        ),
+        reduceTolerableLogs( tolerances, expected ),
         'expected output OK'
       )
 
