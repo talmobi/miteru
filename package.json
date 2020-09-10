@@ -48,19 +48,18 @@
     "redstar": "0.0.2"
   },
   "devDependencies": {
-    "@babel/core": "~7.11.1",
-    "@babel/preset-env": "~7.11.0",
+    "@babel/core": "~7.11.6",
+    "@babel/preset-env": "~7.11.5",
     "@talmobi/faucet": "0.0.3",
     "babelify": "~10.0.0",
     "browserify": "~16.5.2",
     "mkdirp": "~0.5.1",
-    "ncp": "~2.0.0",
     "nyc": "~15.1.0",
     "passlint": "0.0.13",
     "rimraf": "~2.6.1",
     "spacestandard": "~0.2.0",
     "tape": "~4.6.3",
-    "wooster": "~0.3.3",
-    "wtfnode": "~0.8.1"
+    "wooster": "~0.5.0",
+    "wtfnode": "~0.8.3"
   }
 }
